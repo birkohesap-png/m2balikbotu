@@ -1,0 +1,14 @@
+BOT EKRAN GÖRÜNTÜLERİ BURAYA
+============================
+Bu klasöre attığın her görsel ana sayfadaki "Bottan Görüntüler"
+bölümünde OTOMATİK listelenir. Kod değiştirmene gerek yok.
+
+Dosya adı başlığa dönüşür:
+  01-ana-ekran.png      -> "Ana ekran"
+  02-yapboz-menusu.png  -> "Yapboz menusu"
+  03-balik-filtresi.jpg -> "Balik filtresi"
+
+Desteklenen: .png .jpg .jpeg .webp .gif .avif
+Sıralama dosya adına göredir (bu yüzden başa 01, 02, 03 koy).
+
+Eklendikten sonra:  git add . && git commit -m "galeri" && git push
