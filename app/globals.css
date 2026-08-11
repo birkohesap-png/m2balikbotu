@@ -174,6 +174,50 @@ h1,h2,h3{line-height:1.15;letter-spacing:-.4px;font-weight:800}
   font-size:13px;text-align:center;padding:18px;background:rgba(255,255,255,.015)
 }
 
+/* ---------- galeri lightbox (tiklayinca buyur) ---------- */
+.galeri figure{cursor:zoom-in}
+.lightbox{
+  position:fixed;inset:0;z-index:200;background:rgba(3,5,10,.93);
+  backdrop-filter:blur(6px);display:flex;align-items:center;justify-content:center;
+  padding:24px;animation:lbIn .18s ease
+}
+@keyframes lbIn{from{opacity:0}to{opacity:1}}
+.lb-ic{max-width:min(1100px,94vw);max-height:90vh;display:flex;flex-direction:column;gap:10px;margin:0}
+.lb-ic img{max-width:100%;max-height:82vh;object-fit:contain;border-radius:14px;border:1px solid var(--kenar);box-shadow:var(--golge)}
+.lb-ic figcaption{text-align:center;color:var(--gri);font-size:13.5px;font-weight:600}
+.lb-kapat{
+  position:fixed;top:18px;right:22px;width:44px;height:44px;border-radius:12px;
+  background:rgba(255,255,255,.08);border:1px solid var(--kenar);color:#fff;
+  font-size:18px;cursor:pointer;z-index:2
+}
+.lb-kapat:hover{background:rgba(231,193,99,.2);color:var(--altin2)}
+.lb-ok{
+  position:fixed;top:50%;transform:translateY(-50%);width:52px;height:52px;border-radius:50%;
+  background:rgba(255,255,255,.08);border:1px solid var(--kenar);color:#fff;font-size:30px;
+  line-height:1;cursor:pointer;display:flex;align-items:center;justify-content:center
+}
+.lb-ok:hover{background:rgba(231,193,99,.2);color:var(--altin2)}
+.lb-sol{left:22px}.lb-sag{right:22px}
+
+/* ---------- iade guven seridi ---------- */
+.iade-serit{
+  display:flex;align-items:center;gap:15px;justify-content:center;
+  margin-top:26px;padding:16px 22px;border-radius:16px;
+  border:1px solid rgba(63,191,127,.3);
+  background:radial-gradient(500px 160px at 50% 0%,rgba(63,191,127,.12),transparent 70%),linear-gradient(180deg,#0e1a16,#0a0f14)
+}
+.iade-serit .iade-ikon{
+  width:42px;height:42px;flex:0 0 auto;border-radius:12px;display:flex;align-items:center;justify-content:center;
+  background:rgba(63,191,127,.12);border:1px solid rgba(63,191,127,.3)
+}
+.iade-serit .iade-ikon svg{width:22px;height:22px;stroke:#3fbf7f;fill:none;stroke-width:2}
+.iade-serit b{display:block;font-size:15px;color:#8fe0b6}
+.iade-serit span{color:var(--gri);font-size:13.5px}
+@media(max-width:560px){
+  .iade-serit{flex-direction:column;text-align:center;gap:10px;padding:16px}
+  .lb-ok{width:42px;height:42px;font-size:24px}.lb-sol{left:8px}.lb-sag{right:8px}
+}
+
 /* ---------- fiyat ---------- */
 .fiyatlar{display:grid;grid-template-columns:repeat(3,1fr);gap:20px;align-items:stretch}
 .fk{

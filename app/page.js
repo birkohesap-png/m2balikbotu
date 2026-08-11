@@ -1,6 +1,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
-import { SITE, PAKETLER, OZELLIKLER, SSS, GUVENLIK } from '@/lib/site';
+import { SITE, PAKETLER, OZELLIKLER, SSS, GUVENLIK, IADE } from '@/lib/site';
+import Galeri from './Galeri';
 
 /* ---------------------------------------------------------------- ikonlar */
 const YOL = {
@@ -97,8 +98,8 @@ export default function AnaSayfa() {
             <p className="aciklama">
               K34 Balık Botu; oltayı atar, balığı insan gibi yakalar, envanter dolunca
               kamp ateşinde pişirir ve <b>Balık Yapboz</b> etkinliğini matematiksel olarak
-              en iyi hamlelerle bitirir. Fare asla ışınlanmaz — her hareket gerçek bir
-              oyuncununki gibidir.
+              en iyi hamlelerle bitirir. <b style={{ color: 'var(--altin2)' }}>Aylık pakette
+              günlük 160 WON kasma imkanı.</b>
             </p>
             <div className="hero-btn">
               <a className="btn btn-altin" href={SITE.telegramUrl} target="_blank" rel="noopener">
@@ -247,26 +248,10 @@ export default function AnaSayfa() {
             </h2>
             <p>Karmaşık ayar yok. Aç, balıklarını seç, başlat.</p>
           </div>
-          <div className="galeri">
-            {gorseller.length > 0
-              ? gorseller.map((g) => (
-                  <figure key={g.src}>
-                    <img
-                      src={g.src}
-                      alt={'Metin2 Balık Botu ekran görüntüsü — ' + g.baslik}
-                      loading="lazy"
-                    />
-                    <figcaption>{g.baslik}</figcaption>
-                  </figure>
-                ))
-              : [1, 2, 3, 4, 5, 6].map((i) => (
-                  <div className="galeri-bos" key={i}>
-                    Görsel {i}
-                    <br />
-                    <span style={{ fontSize: 11 }}>public/galeri klasörüne ekleyin</span>
-                  </div>
-                ))}
-          </div>
+          <Galeri gorseller={gorseller} />
+          <p style={{ textAlign: 'center', color: 'var(--gri2)', fontSize: 12.5, marginTop: 18 }}>
+            Görsele tıklayınca büyür.
+          </p>
         </div>
       </section>
 
@@ -326,12 +311,26 @@ export default function AnaSayfa() {
               </div>
             ))}
           </div>
+
+          <div className="iade-serit">
+            <span className="iade-ikon">
+              <svg viewBox="0 0 24 24" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M3 12a9 9 0 109-9 9 9 0 00-7 3.3M3 4v4h4" />
+                <path d="M9 12l2 2 4-4" />
+              </svg>
+            </span>
+            <div>
+              <b>{IADE.baslik}</b>
+              <span>{IADE.metin}</span>
+            </div>
+          </div>
+
           <p
             style={{
               textAlign: 'center',
               color: 'var(--gri2)',
               fontSize: 13,
-              marginTop: 26,
+              marginTop: 22,
             }}
           >
             Aylık pakette bypass’lı sanal makine kurulumu bize aittir — bilgisayarın kaç
