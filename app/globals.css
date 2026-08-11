@@ -288,4 +288,12 @@ h1,h2,h3{line-height:1.15;letter-spacing:-.4px;font-weight:800}
   .iz-4,.iz-2,.adimlar{grid-template-columns:1fr}
   .serit{padding:36px 22px}
   .guven{gap:16px}
+  /* Header mobilde: buyuk "Satin Al" butonu markaya yapisiyordu -> kucult + arayi ac */
+  .ust-ic{gap:10px;height:64px}
+  .marka{margin-right:auto;min-width:0}
+  .marka img{width:34px;height:34px}
+  .marka span{font-size:14px}
+  .marka small{font-size:9px;letter-spacing:1px}
+  .ust-ic .btn-tg{padding:9px 13px;font-size:12.5px;border-radius:11px;flex:0 0 auto}
+  .ust-ic .btn-tg svg{width:15px;height:15px}
 }
