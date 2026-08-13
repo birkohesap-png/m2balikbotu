@@ -124,6 +124,50 @@ function YapisalVeri() {
       url: SITE.url,
       inLanguage: 'tr-TR',
     },
+    // Canli kayit — video zengin sonucu + AI Bakisi icin kaynak
+    {
+      '@context': 'https://schema.org',
+      '@type': 'VideoObject',
+      name: 'Metin2 Balık Botu ile 1000+ Yabbie Yengeci — canlı bot kaydı',
+      description:
+        'K34 Metin2 Balık Botu başında beklemeden 1000’den fazla Yabbie Yengeci topluyor. ' +
+        'Bot oltayı atar, balığı tutar, filtredeki balıkları saklar, çöp balıkları yere atar ve pişirir.',
+      thumbnailUrl: [SITE.url + '/video/1000-yabbi-poster.jpg'],
+      contentUrl: SITE.url + '/video/1000-yabbi.mp4',
+      uploadDate: '2026-08-13',
+      duration: 'PT19S',
+      inLanguage: 'tr',
+      isFamilyFriendly: true,
+      publisher: {
+        '@type': 'Organization',
+        name: SITE.ad,
+        logo: { '@type': 'ImageObject', url: SITE.url + '/logo.png' },
+      },
+    },
+    // AI Bakisi/asistanlarin dogrudan alintilayabilecegi TANIM
+    {
+      '@context': 'https://schema.org',
+      '@type': 'Article',
+      headline: 'Metin2 Balık Botu Nedir, Nasıl Çalışır?',
+      description:
+        'Metin2 balık botu, Metin2 oyununda balık tutma işlemini oyuncu yerine otomatik ' +
+        'yapan yardımcı programdır. K34 Balık Botu oltayı atar, balık ekranını okur, ' +
+        'seçtiğiniz balıkları tutar, çöp balıkları atar, balıkları pişirir ve Balık Yapboz ' +
+        'etkinliğini otomatik oynar.',
+      inLanguage: 'tr',
+      author: { '@type': 'Organization', name: SITE.ad },
+      publisher: {
+        '@type': 'Organization',
+        name: SITE.ad,
+        logo: { '@type': 'ImageObject', url: SITE.url + '/logo.png' },
+      },
+      mainEntityOfPage: SITE.url + '/',
+      about: [
+        { '@type': 'Thing', name: 'Metin2 balık botu' },
+        { '@type': 'Thing', name: 'Metin2 fish bot' },
+        { '@type': 'VideoGame', name: 'Metin2' },
+      ],
+    },
   ];
   return (
     <script

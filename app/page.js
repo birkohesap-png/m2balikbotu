@@ -238,6 +238,74 @@ export default function AnaSayfa() {
         </div>
       </section>
 
+      {/* ------- Metin2 Balık Botu Nedir? (SEO + AI Bakışı kaynağı) -------
+          AI özetleri ve Google, soruyu ILK CUMLEDE net cevaplayan, kisa ve
+          olgusal paragraflari alintilar. Bu bolum bilerek o sekilde yazildi. */}
+      <section className="bolum" id="nedir">
+        <div className="sar">
+          <div className="bolum-bas">
+            <span className="etiket">Bilgi</span>
+            <h2>
+              Metin2 Balık Botu <span className="altin-yazi">nedir?</span>
+            </h2>
+          </div>
+
+          <div className="nedir-govde">
+            <p className="nedir-tanim">
+              <strong>Metin2 balık botu</strong>, Metin2 oyununda balık tutma işlemini oyuncu
+              yerine otomatik yapan yardımcı programdır. Oltayı kendisi atar, balık ekranını
+              okur ve balığı tutar; böylece oyuncu bilgisayar başında beklemek zorunda kalmaz.
+            </p>
+            <p>
+              <strong>K34 Balık Botu</strong>, Metin2 için Türkçe geliştirilmiş bir balık
+              botudur. Windows 10 ve 11’de çalışır, kurulum gerektirmez ve tek bir{' '}
+              <code>.exe</code> dosyasıdır.
+            </p>
+
+            <h3>Metin2 balık botu ne işe yarar?</h3>
+            <p>
+              Balık tutmak Metin2’de tekrar eden ve uzun süren bir işlemdir. Bot bu işi
+              7/24 yaparak oyuncunun yerine balık, Yabbie Yengeci, Altın Sudak ve Balık
+              Yapboz sandığı biriktirir. Aylık pakette günde yaklaşık{' '}
+              <strong>160 WON</strong> kasma imkânı sağlar.
+            </p>
+
+            <h3>Nasıl çalışır?</h3>
+            <ol className="nedir-adim">
+              <li>Oltayı suya atar ve balığın gelmesini bekler.</li>
+              <li>Balık ekranı açılınca balığın adını okur.</li>
+              <li>Seçtiğin balıklar listedeyse tutar, değilse bırakır.</li>
+              <li>Çöp balıkları envanterden yere atar, değerli olanları saklar.</li>
+              <li>Envanter dolunca karaya çekilip kamp ateşinde balıkları pişirir.</li>
+              <li>Balık Yapboz etkinliğini en az denemeyle otomatik bitirir.</li>
+            </ol>
+
+            <h3>Güvenli mi?</h3>
+            <p>
+              Bot oyunun dosyalarına dokunmaz, hafızasına müdahale etmez. Sadece ekranı
+              okur ve fareyi insan gibi kademeli hareket ettirir — ışınlanma yoktur.
+              Tıklama aralıkları rastgeledir, bu yüzden makine ritmi bırakmaz.
+            </p>
+
+            <h3>Özet bilgiler</h3>
+            <div className="nedir-tablo-sar">
+              <table className="nedir-tablo">
+                <tbody>
+                  <tr><th>Ürün adı</th><td>K34 Metin2 Balık Botu</td></tr>
+                  <tr><th>Oyun</th><td>Metin2 (Gameforge TR ve PVP sunucuları)</td></tr>
+                  <tr><th>İşletim sistemi</th><td>Windows 10 / Windows 11</td></tr>
+                  <tr><th>Kurulum</th><td>Gerekmez — tek .exe dosyası</td></tr>
+                  <tr><th>Dil</th><td>Türkçe</td></tr>
+                  <tr><th>Fiyat</th><td>Günlük 300₺ · Haftalık 1300₺ · Aylık 2500₺</td></tr>
+                  <tr><th>Satış / destek</th><td>Telegram @{SITE.telegram}</td></tr>
+                  <tr><th>İade</th><td>Beğenmezsen para iadesi</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </section>
+
       {/* ---------------- galeri ---------------- */}
       <section className="bolum" id="galeri" style={{ paddingTop: 0 }}>
         <div className="sar">
@@ -252,6 +320,28 @@ export default function AnaSayfa() {
           <p style={{ textAlign: 'center', color: 'var(--gri2)', fontSize: 12.5, marginTop: 18 }}>
             Görsele tıklayınca büyür.
           </p>
+
+          {/* ---- canli kayit: 1000 Yabbie ---- */}
+          <div className="video-blok">
+            <h3 className="video-baslik">
+              Botun <span className="altin-yazi">gerçek kaydı</span> — 1000+ Yabbie Yengeci
+            </h3>
+            <p className="video-alt">
+              Hiç başında beklemeden toplanan balıklar. Bot oltayı atar, balığı tutar,
+              filtredekileri saklar, çöpü yere atar ve pişirir.
+            </p>
+            <video
+              className="video-oynatici"
+              src="/video/1000-yabbi.mp4"
+              poster="/video/1000-yabbi-poster.jpg"
+              controls
+              preload="none"
+              playsInline
+              muted
+              loop
+              aria-label="Metin2 Balık Botu ile toplanan 1000 Yabbie Yengeci kaydı"
+            />
+          </div>
         </div>
       </section>
 

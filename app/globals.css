@@ -341,3 +341,72 @@ h1,h2,h3{line-height:1.15;letter-spacing:-.4px;font-weight:800}
   .ust-ic .btn-tg{padding:9px 13px;font-size:12.5px;border-radius:11px;flex:0 0 auto}
   .ust-ic .btn-tg svg{width:15px;height:15px}
 }
+
+/* ---- Bottan görüntüler: canlı video kaydı ---- */
+.video-blok {
+  margin: 42px auto 0;
+  max-width: 760px;
+  text-align: center;
+  padding: 26px 18px 28px;
+  background: var(--bg2, #12151c);
+  border: 1px solid var(--cizgi, #242a36);
+  border-radius: 18px;
+}
+.video-baslik {
+  font-size: clamp(19px, 3.4vw, 25px);
+  font-weight: 800;
+  letter-spacing: -0.4px;
+  margin: 0 0 8px;
+}
+.video-alt {
+  color: var(--gri2, #8b93a4);
+  font-size: 14px;
+  line-height: 1.65;
+  max-width: 520px;
+  margin: 0 auto 20px;
+}
+.video-oynatici {
+  width: 100%;
+  max-width: 320px;          /* dikey kayit - ekrani kaplamasin */
+  height: auto;
+  aspect-ratio: 1072 / 1920;
+  border-radius: 14px;
+  border: 1px solid var(--cizgi, #242a36);
+  background: #000;
+  display: block;
+  margin: 0 auto;
+}
+@media (max-width: 520px) {
+  .video-blok { padding: 20px 12px 22px; border-radius: 14px; }
+  .video-oynatici { max-width: 260px; }
+}
+
+/* ---- "Metin2 Balık Botu nedir?" bilgi bölümü (SEO / AI özetleri) ---- */
+.nedir-govde { max-width: 780px; margin: 0 auto; }
+.nedir-govde p { color: var(--gri, #aab2c0); font-size: 15.5px; line-height: 1.8; margin: 0 0 16px; }
+.nedir-tanim {
+  font-size: 17px !important;
+  color: var(--beyaz, #eef1f6) !important;
+  background: var(--bg2, #12151c);
+  border-left: 3px solid var(--altin, #ffc828);
+  border-radius: 0 12px 12px 0;
+  padding: 16px 18px;
+}
+.nedir-govde h3 {
+  font-size: 18.5px; font-weight: 800; letter-spacing: -0.3px;
+  margin: 30px 0 10px; color: var(--beyaz, #eef1f6);
+}
+.nedir-govde code {
+  background: var(--bg3, #171b24); padding: 2px 6px;
+  border-radius: 6px; font-size: 13.5px;
+}
+.nedir-adim { color: var(--gri, #aab2c0); font-size: 15.5px; line-height: 1.85; padding-left: 20px; margin: 0 0 16px; }
+.nedir-adim li { margin-bottom: 4px; }
+.nedir-tablo-sar { overflow-x: auto; }
+.nedir-tablo { width: 100%; border-collapse: collapse; font-size: 14.5px; }
+.nedir-tablo th, .nedir-tablo td {
+  padding: 11px 14px; text-align: left;
+  border-bottom: 1px solid var(--cizgi, #242a36);
+}
+.nedir-tablo th { color: var(--gri2, #8b93a4); font-weight: 600; white-space: nowrap; width: 38%; }
+.nedir-tablo td { color: var(--beyaz, #eef1f6); }
