@@ -14,6 +14,14 @@ const BASLIK = {
   envanter: '📦 <b>Envanter doldu</b>',
   yapboz: '🧩 <b>Yapboz tamamlandı</b>',
   uyari: '⚠️ <b>Uyarı</b>',
+  karakter: '🎭 <b>Karakter değişimi</b>',
+  mola: '☕ <b>Mola</b>',
+  cikis: '🚪 <b>Çıkış yapılıyor</b>',
+  giris: '✅ <b>Giriş başarılı</b>',
+  yem: '🪱 <b>Solucan bitti</b>',
+  kanal: '🔄 <b>Kanal değişimi</b>',
+  botcevap: '💬 <b>Bot cevap verdi</b>',
+  altinton: '🏆 <b>Altın Ton alındı</b>',
 };
 
 /**
@@ -38,7 +46,14 @@ export async function POST(req) {
       String(t || '').slice(0, 400).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 
     let metin = BASLIK[tur] || BASLIK.uyari;
-    if (g.hesap) metin += `\n👤 <b>${kacis(g.hesap)}</b>`;
+    // Hangi hesap / hangi karakter - birden fazla hesap acikken bildirimin
+    // kime ait oldugu ilk satirdan anlasilsin.
+    if (g.hesap || g.karakter) {
+      const kim = [];
+      if (g.hesap) kim.push('👤 <b>' + kacis(g.hesap) + '</b>');
+      if (g.karakter) kim.push('🎭 <b>' + kacis(g.karakter) + '</b>');
+      metin += '\n' + kim.join(' · ');
+    }
     if (tur === 'pm') {
       metin += `\n\n<b>${kacis(g.gonderen || 'Bilinmeyen')}</b> yazdı:\n<i>${kacis(g.mesaj)}</i>`;
     } else if (g.mesaj) {

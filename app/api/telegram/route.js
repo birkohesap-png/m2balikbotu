@@ -36,7 +36,8 @@ async function hesaplariTopla(lisansId) {
     const canli = (Date.now() - new Date(r.guncelleme).getTime()) / 1000 < CANLI_SN;
     const v = r.veri || {};
     (v.hesaplar || []).forEach((h, i) => {
-      liste.push({ ...h, canli, pc: v.pc || r.hwid.slice(0, 8), durumId: r.id, idx: i });
+      const yas = Math.max(0, (Date.now() - new Date(r.guncelleme).getTime()) / 1000);
+      liste.push({ ...h, canli, yas, pc: v.pc || r.hwid.slice(0, 8), durumId: r.id, idx: i });
     });
   }
   return liste;
@@ -56,6 +57,85 @@ function hesapKlavye(liste) {
   };
 }
 
+/* Karakter degisimine kalan sure. kd_kalan durum GONDERILDIGI andaki degerdir;
+   aradan gecen sure (h.yas) dusulerek guncel degere cevrilir. */
+function kdKalan(h) {
+  if (!h.kd_acik || !h.kd_kalan) return null;
+  return Math.max(0, Math.round(h.kd_kalan - (h.yas || 0)));
+}
+
+/* Altin Ton her karakterde 24 saatte bir tutulabilir. Slot icin:
+   {alindi:bool, kalan:sn} - kalan, tonun yeniden tutulabilecegi ana kadar. */
+function tonDurum(h, slot) {
+  const kayit = h.ton_gunluk || {};
+  const t = Number(kayit[String(slot)] || 0);
+  if (!t) return { alindi: false, kalan: 0 };
+  const periyot = Number(h.ton_periyot || 86400);
+  const gecen = Date.now() / 1000 - t;
+  if (gecen >= periyot) return { alindi: false, kalan: 0 };
+  return { alindi: true, kalan: Math.round(periyot - gecen) };
+}
+
+function karakterListesi(h) {
+  const ham = Array.isArray(h.karakterler) ? h.karakterler : [];
+  const adet = Math.max(2, Math.min(5, h.kd_adet || ham.filter(Boolean).length || 0));
+  return ham.slice(0, adet).map((ad, i) => ({
+    slot: i + 1,
+    ad: ad || 'Slot ' + (i + 1),
+    aktif: i === (h.aktif_slot || 0),
+    ton: tonDurum(h, i),
+  }));
+}
+
+function kdDurumMetni(h) {
+  const kalan = kdKalan(h);
+  if (h.kd_degisiyor) return 'şu an değişiyor…';
+  if (kalan === null) return 'karakter değişimi kapalı';
+  return kalan > 0 ? sureMetni(kalan) : 'birazdan';
+}
+
+function karakterMetni(h) {
+  const liste = karakterListesi(h);
+  const satir = liste.map(
+    (k) => (k.aktif ? '\u{1F7E2}' : '\u{1F534}') + ' <b>' + k.slot + '. ' + k.ad + '</b>' +
+           (k.aktif ? ' \u2014 şu an oynanıyor' : '') +
+           (k.ton.alindi
+             ? '\n     \u{1F3C6} Altın Ton alındı \u00b7 yenilenmesine ' + sureMetni(k.ton.kalan)
+             : '\n     \u{1F41F} Altın Ton hazır')
+  );
+  return (
+    '\u{1F3AD} <b>Karakterler</b> \u2014 ' + (h.ad || 'Hesap') + '\n' +
+    (h.canli ? '\u{1F7E2} Çevrimiçi' : '\u26AA Çevrimdışı') + ' \u00B7 \u{1F4BB} ' + h.pc + '\n\n' +
+    (satir.length ? satir.join('\n') : 'Karakter listesi henüz okunmadı.') +
+    '\n\n\u{1F504} Sıradaki değişim: <b>' + kdDurumMetni(h) + '</b>' +
+    (liste.length
+      ? '\n\u{1F3C6} Günlük ton: ' + liste.filter((k) => k.ton.alindi).length + '/' + liste.length + '\n\u{1F4CB} Sıra: ' + liste.map((k) => k.ad).join(' \u2192 ') + ' \u2192 ' + liste[0].ad
+      : '')
+  );
+}
+
+function karakterKlavye(h, geriData) {
+  const kalan = kdKalan(h);
+  const liste = karakterListesi(h);
+  return {
+    inline_keyboard: [
+      ...liste.map((k) => [
+        {
+          text:
+            (k.aktif ? '\u{1F7E2}' : '\u{1F534}') + ' ' + k.slot + '. ' + k.ad +
+            (k.ton.alindi ? ' \u{1F3C6}' : '') +
+            (k.aktif && kalan !== null ? ' \u00B7 ' + sureMetni(kalan) : ''),
+          callback_data: 'ki:' + k.slot,
+        },
+      ]),
+      [
+        { text: '\u{1F504} Yenile', callback_data: 'k:' + h.durumId + ':' + h.idx },
+        { text: '\u25C0\uFE0F Geri', callback_data: geriData },
+      ],
+    ],
+  };
+}
+
 function hesapMetni(h) {
   const sure = h.baslangic ? sureMetni(Date.now() / 1000 - h.baslangic) : '—';
   const toplam = (h.tutulan || 0) + (h.kacan || 0);
@@ -69,6 +149,10 @@ function hesapMetni(h) {
     `🔁 Tur: <b>${h.tur || 0}</b>\n` +
     `🎯 Başarı: <b>%${basari}</b>\n` +
     `⚙️ Durum: <b>${h.faz || '—'}</b>\n` +
+    (h.karakter ? `🎭 Karakter: <b>${h.karakter}</b>\n` : '') +
+    (kdKalan(h) !== null
+      ? `🔄 Karakter değişimi: <b>${kdDurumMetni(h)}</b>\n`
+      : '') +
     `⏱ Çalışma: <b>${sure}</b>` +
     (h.yapboz
       ? `\n\n🧩 Yapboz — B:${h.yapboz.buyuk || 0} O:${h.yapboz.orta || 0} K:${h.yapboz.kucuk || 0} · sandık ${h.yapboz.kullanilan || 0}`
@@ -128,18 +212,41 @@ export async function POST(req) {
         await cevapla(q.id);
         return OK();
       }
+      if (q.data.startsWith('ki:')) {
+        // Karakter butonu bilgi amacli - buluttan karakter degistirilemez.
+        await cevapla(q.id, 'Karakter değişimi bot tarafında otomatik yapılır');
+        return OK();
+      }
+      if (q.data.startsWith('k:')) {
+        const [, durumId, idx] = q.data.split(':');
+        const liste = await hesaplariTopla(bag.id);
+        const h = liste.find((x) => String(x.durumId) === durumId && String(x.idx) === idx);
+        if (h) {
+          await duzenle(chatId, q.message.message_id, karakterMetni(h),
+                        karakterKlavye(h, `h:${durumId}:${idx}`));
+        }
+        await cevapla(q.id);
+        return OK();
+      }
       if (q.data.startsWith('h:')) {
         const [, durumId, idx] = q.data.split(':');
         const liste = await hesaplariTopla(bag.id);
         const h = liste.find((x) => String(x.durumId) === durumId && String(x.idx) === idx);
         if (h) {
-          await duzenle(chatId, q.message.message_id, hesapMetni(h), {
-            inline_keyboard: [
-              [
-                { text: '🔄 Yenile', callback_data: q.data },
-                { text: '◀️ Hesaplar', callback_data: 'geri' },
-              ],
+          const satirlar = [
+            [
+              { text: '🔄 Yenile', callback_data: q.data },
+              { text: '◀️ Hesaplar', callback_data: 'geri' },
             ],
+          ];
+          // Karakter listesi okunduysa ayri bir "Karakterler" gorunumu sun
+          if (karakterListesi(h).length) {
+            satirlar.unshift([
+              { text: '🎭 Karakterler', callback_data: `k:${durumId}:${idx}` },
+            ]);
+          }
+          await duzenle(chatId, q.message.message_id, hesapMetni(h), {
+            inline_keyboard: satirlar,
           });
         }
         await cevapla(q.id);
