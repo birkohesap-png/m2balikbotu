@@ -144,6 +144,26 @@ function YapisalVeri() {
         logo: { '@type': 'ImageObject', url: SITE.url + '/logo.png' },
       },
     },
+    // Tanitim videosu (YouTube) — video zengin sonucu icin
+    {
+      '@context': 'https://schema.org',
+      '@type': 'VideoObject',
+      name: 'Metin2 TR Balık Botu Nasıl Kullanılır? Kurulum ve Ayarlar (2026)',
+      description:
+        'K34 Metin2 Balık Botu tanıtım videosu: kurulum, ayarlar, balık filtresi, otomatik pişirme ' +
+        've Balık Yapboz özelliklerinin adım adım anlatımı.',
+      thumbnailUrl: ['https://i.ytimg.com/vi/' + SITE.youtubeId + '/maxresdefault.jpg'],
+      embedUrl: 'https://www.youtube.com/embed/' + SITE.youtubeId,
+      contentUrl: 'https://www.youtube.com/watch?v=' + SITE.youtubeId,
+      uploadDate: '2026-08-26',
+      inLanguage: 'tr',
+      isFamilyFriendly: true,
+      publisher: {
+        '@type': 'Organization',
+        name: SITE.ad,
+        logo: { '@type': 'ImageObject', url: SITE.url + '/logo.png' },
+      },
+    },
     // AI Bakisi/asistanlarin dogrudan alintilayabilecegi TANIM
     {
       '@context': 'https://schema.org',
