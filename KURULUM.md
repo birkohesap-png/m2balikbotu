@@ -125,6 +125,62 @@ Ayrı rehber: **TELEGRAM_KURULUM.md** (BotFather → 2 env değişkeni → webho
 
 ---
 
+## 6.6) Otomatik güncelleme (tek seferlik kurulum)
+
+Amaç: her güncellemede müşterilere tek tek `.exe` göndermeyi bitirmek. Bot
+açılışta siteye tek küçük istek atar, yeni sürüm varsa kullanıcıya sorar,
+onaylarsa kendisi indirip sessizce kurar ve yeniden açılır.
+
+**Kaynak kodun hiçbir yere gitmez** — GitHub'a konan şey sadece müşteriye
+zaten verdiğin derlenmiş kurulum dosyasıdır ve depo **özeldir**.
+
+### a) Sürüm deposunu aç (bir kez)
+
+1. GitHub'da **private** yeni bir depo aç: `k34-surum` (içi boş olabilir).
+2. **Settings → Developer settings → Personal access tokens → Fine-grained**
+   → yeni token:
+   - Repository access: **Only select repositories** → `k34-surum`
+   - Permissions → Repository → **Contents: Read-only** (başka hiçbir şey verme)
+3. Vercel → Settings → Environment Variables:
+
+| İsim | Değer |
+|---|---|
+| `GH_REPO` | `kullanıcı-adın/k34-surum` |
+| `GH_TOKEN` | az önce ürettiğin token |
+
+Ekledikten sonra **Redeploy**.
+
+### b) Her yeni sürümde (3 adım)
+
+```bash
+py -3.11 yayinla.py 2.2.0
+```
+
+Bu komut sürüm numarasını yükseltir, arayüzü gömer, exe'yi derler, kurulum
+sihirbazını paketler ve **SHA-256**'yı yazar.
+
+1. `cikti\K34_Kurulum_2.2.0.exe` dosyasını `k34-surum` deposunda yeni bir
+   **Release**'e yükle.
+2. `https://m2balikbotu.com/k34` → **Bot Sürümleri** kartı → dosyayı seç,
+   sürümü ve SHA-256'yı yapıştır, notları yaz → **Yayınla**.
+3. Bitti. Müşteriler botu bir sonraki açışta güncellemeyi görür.
+
+> **Sürüm numarasını elle değiştirme.** `yayinla.py` tek yerden yönetir.
+> Kurulumun içindeki sürüm ile panele yazdığın sürüm farklı olursa bot
+> güncellemeyi kurar, açılır, yine "yeni sürüm var" görür ve sonsuz döngüye girer.
+
+### Nasıl çalışıyor?
+
+| Adım | Ne olur |
+|---|---|
+| Bot açılır | Arka planda tek GET → `/api/surum` (≈200 bayt, 6 sn zaman aşımı). Ağ yoksa sessizce vazgeçer, bot normal açılır. |
+| Yeni sürüm varsa | Pencere çıkar: sürüm notları + boyut. "Zorunlu" işaretlediysen "Sonra" butonu gizlenir. |
+| Kullanıcı onaylar | Bot `/api/indir`'e **lisans anahtarıyla** sorar; site anahtarı doğrular ve GitHub'dan kısa ömürlü imzalı adres üretir. |
+| İndirme | Dosya **doğrudan GitHub CDN'inden** iner (siteden geçmez). SHA-256 tutmazsa kurulum yapılmaz. |
+| Kurulum | Bot kapanır, sihirbaz `/SILENT` çalışır, bitince botu kendisi geri açar. Yönetici yetkisi istemez. |
+
+---
+
 ## 7) Botu siteye bağlama
 
 Bot tarafı hazır — `pega_key.py` içindeki adres:
