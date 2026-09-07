@@ -136,17 +136,31 @@ zaten verdiğin derlenmiş kurulum dosyasıdır ve depo **özeldir**.
 
 ### a) Sürüm deposunu aç (bir kez)
 
-1. GitHub'da **private** yeni bir depo aç: `k34-surum` (içi boş olabilir).
-2. **Settings → Developer settings → Personal access tokens → Fine-grained**
-   → yeni token:
-   - Repository access: **Only select repositories** → `k34-surum`
-   - Permissions → Repository → **Contents: Read-only** (başka hiçbir şey verme)
-3. Vercel → Settings → Environment Variables:
+GitHub'da `k34-surum` adında yeni bir depo aç. **Bu depoya kaynak kod
+koymuyorsun** — içine sadece derlenmiş kurulum dosyası (Release eki) gidiyor.
+
+Depoyu **private** veya **public** yapabilirsin; ikisi de çalışır:
+
+| | Private | Public |
+|---|---|---|
+| Kurulum dosyasını kim indirebilir | Sadece site üzerinden, geçerli lisansla | Linki bilen herkes |
+| Vercel'e eklenecek | `GH_REPO` **+** `GH_TOKEN` | Sadece `GH_REPO` |
+| Kaynak kodun | Hiçbir şekilde gitmiyor | Hiçbir şekilde gitmiyor |
+
+> Bot lisans anahtarı olmadan zaten çalışmadığı için public seçenek de
+> güvenlidir; private sadece dosyanın gelişigüzel dolaşmasını engeller.
+
+**Private seçtiysen** ayrıca bir token gerekir:
+**Settings → Developer settings → Personal access tokens → Fine-grained** → yeni token:
+- Repository access: **Only select repositories** → `k34-surum`
+- Permissions → Repository → **Contents: Read-only** (başka hiçbir yetki verme)
+
+Vercel → Settings → Environment Variables:
 
 | İsim | Değer |
 |---|---|
 | `GH_REPO` | `kullanıcı-adın/k34-surum` |
-| `GH_TOKEN` | az önce ürettiğin token |
+| `GH_TOKEN` | *(sadece private depoda)* ürettiğin token |
 
 Ekledikten sonra **Redeploy**.
 
