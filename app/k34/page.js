@@ -2,6 +2,7 @@
 
 import { Fragment, useEffect, useState, useCallback } from 'react';
 import Surumler from './Surumler';
+import Telegram from './Telegram';
 
 const PAKETLER = [
   { kod: 'gunluk', ad: 'Günlük · 300 TL · 1 PC', cihaz: 1, saat: 24 },
@@ -387,6 +388,9 @@ export default function Admin() {
 
         {/* ---- bot surumleri / otomatik guncelleme ---- */}
         <Surumler bildir={bildir} />
+
+        {/* ---- telegram webhook durumu ---- */}
+        <Telegram bildir={bildir} />
       </div>
 
       {mesaj && <div style={S.bildirim}>{mesaj}</div>}

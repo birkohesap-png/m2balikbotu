@@ -65,7 +65,16 @@ Ekledikten sonra **Redeploy**.
 
 ## 3) Webhook'u bağla
 
-Tarayıcının adres çubuğuna yapıştır — `TOKEN` ve `GIZLI` yerine kendi değerlerini yaz:
+**En kolay yol — panelden tek tıkla:**
+
+`https://m2balikbotu.com/k34` → **Telegram Botu** kartı → *Webhook'u bu siteye bağla*.
+
+Kart, webhook'un şu an hangi adrese kurulu olduğunu, bekleyen mesaj sayısını ve
+Telegram'ın verdiği son hatayı gösterir. Token sunucuda durduğu için senin
+hiçbir yere token yapıştırman gerekmez.
+
+**Elle yapmak istersen** — adres çubuğuna yapıştır, `TOKEN` ve `GIZLI` yerine
+kendi değerlerini yaz:
 
 ```
 https://api.telegram.org/botTOKEN/setWebhook?url=https://m2balikbotu.com/api/telegram&secret_token=GIZLI
@@ -75,6 +84,11 @@ https://api.telegram.org/botTOKEN/setWebhook?url=https://m2balikbotu.com/api/tel
 
 **Kontrol:** `https://m2balikbotu.com/api/telegram` adresini aç —
 `{"ok":true,"token":true,"gizli":true}` dönmeli.
+
+> ### ⚠ Alan adı değişirse webhook kırılır
+> Webhook, Telegram tarafında **tam adres** olarak saklanır. Alan adını
+> değiştirdiğinde eski adreste kalır ve bot mesaj almayı bırakır — dışarıdan
+> "Telegram gitti" gibi görünür. Çözüm: panelde o butona basmak.
 
 ---
 
