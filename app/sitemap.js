@@ -1,13 +1,18 @@
-import { SITE } from '@/lib/site';
+import { SITE, SAYFALAR } from '@/lib/site';
 
+/**
+ * Sitemap SADECE gercek sayfalari listeler.
+ * Onceki surumde "/#fiyatlar" gibi capa (fragment) adresleri vardi; Google bunlari
+ * ayri sayfa saymaz ve Search Console'da "taranmadi / yinelenen sayfa" hatasi verir.
+ * Yeni sayfa eklemek icin lib/site.js icindeki SAYFALAR dizisine ekle, burasi
+ * kendiliginden guncellenir.
+ */
 export default function sitemap() {
   const now = new Date();
-  return [
-    { url: SITE.url + '/', lastModified: now, changeFrequency: 'weekly', priority: 1 },
-    { url: SITE.url + '/#nedir', lastModified: now, changeFrequency: 'monthly', priority: 0.9 },
-    { url: SITE.url + '/#ozellikler', lastModified: now, changeFrequency: 'monthly', priority: 0.8 },
-    { url: SITE.url + '/#fiyatlar', lastModified: now, changeFrequency: 'weekly', priority: 0.9 },
-    { url: SITE.url + '/#galeri', lastModified: now, changeFrequency: 'monthly', priority: 0.6 },
-    { url: SITE.url + '/#sss', lastModified: now, changeFrequency: 'monthly', priority: 0.6 },
-  ];
+  return SAYFALAR.map((s) => ({
+    url: SITE.url + s.yol,
+    lastModified: now,
+    changeFrequency: s.siklik,
+    priority: s.oncelik,
+  }));
 }

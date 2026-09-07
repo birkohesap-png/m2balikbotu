@@ -1,4 +1,4 @@
-# m2balıkbotu.com — Kurulum Rehberi
+# m2balikbotu.com — Kurulum Rehberi
 
 GitHub → Vercel akışı. Toplam **10-15 dakika**.
 
@@ -68,8 +68,20 @@ Ekledikten sonra **Deployments → ⋯ → Redeploy**.
 
 Vercel → **Settings → Domains** → ekle:
 
-- `xn--m2balkbotu-1ub.com`  ← **m2balıkbotu.com'un gerçek (punycode) hali, bunu yaz**
-- `www.xn--m2balkbotu-1ub.com`
+- `m2balikbotu.com`  ← **ana (canonical) alan adı**
+- `www.m2balikbotu.com`  → Vercel'de `m2balikbotu.com`'a **Redirect** olarak ayarla
+
+> ### ⚠ Eski alan adını SİLME
+> Daha önce dağıtılan bot `.exe`'leri hâlâ eski adrese
+> (`xn--m2balkbotu-1ub.com`, yani `m2balıkbotu.com`) bakıyor. Bu alan adı
+> **aynı Vercel projesinde bağlı kalmalı**, yoksa eski kurulumlarda lisans
+> doğrulaması kırılır ve botlar açılmaz.
+>
+> - `xn--m2balkbotu-1ub.com`'u Domains listesinde **bırak** ve **yönlendirme (redirect)
+>   KURMA** — aynı projeye doğrudan servis etsin.
+> - Yönlendirme kurarsan botun `POST /api/check` isteği 301'de GET'e dönüşür ve
+>   lisans doğrulaması bozulur. Bu yüzden eski alan adı düz alias olarak kalmalı.
+> - Kullanıcıların hepsi yeni sürüme geçtikten sonra kaldırabilirsin.
 
 Sonra alan adı sağlayıcında (GoDaddy/Natro/İsimtescil vb.) Vercel'in gösterdiği
 kayıtları gir:
@@ -86,9 +98,14 @@ DNS yayılması 5 dk – 24 saat sürebilir.
 
 ---
 
-## 6) Admin paneli
+## 6) Yönetim paneli
 
-`https://m2balıkbotu.com/admin` → `ADMIN_SIFRE` ile gir.
+`https://m2balikbotu.com/k34` → `ADMIN_SIFRE` ile gir.
+
+> Panel adresi eskiden `/admin` idi; sürekli sızma denemesi aldığı için `/k34`
+> olarak değiştirildi. Bu yol **robots.txt'e yazılmaz** (yazmak onu duyurmak
+> olurdu); bunun yerine `app/k34/layout.js` içindeki `noindex` ile aramadan
+> uzak tutulur. Adresi kimseyle paylaşma.
 
 Panelden:
 - **Yeni anahtar üret** — paket seç (Günlük/Haftalık/Aylık), adet gir, müşteri adı yaz
@@ -113,7 +130,7 @@ Ayrı rehber: **TELEGRAM_KURULUM.md** (BotFather → 2 env değişkeni → webho
 Bot tarafı hazır — `pega_key.py` içindeki adres:
 
 ```python
-SUNUCU = 'https://xn--m2balkbotu-1ub.com'
+SUNUCU = 'https://m2balikbotu.com'
 ```
 
 Site yayına girdikten sonra botu yeniden derle:
@@ -132,7 +149,14 @@ o bilgisayarın HWID'si görünmeli.
 | Ne | Nerede |
 |---|---|
 | Fiyat / paket / cihaz sayısı | `lib/site.js` → `PAKETLER` |
-| Telegram kullanıcı adı | `lib/site.js` → `SITE.telegram` |
+| Alan adı | `lib/site.js` → `SITE.host` (canonical, sitemap, şema — hepsi buradan) |
+| Telegram **admin** hesabı | `lib/site.js` → `SITE.telegram` |
+| Telegram **genel grup** | `lib/site.js` → `SITE.telegramGrup` |
+| Instagram | `lib/site.js` → `SITE.instagram` |
+| **Yeni sayfa / sitemap** | `lib/site.js` → `SAYFALAR` (sitemap ve alt menü otomatik) |
+| Sürüm notları | `lib/site.js` → `GUNCELLEMELER` (en yeni en üstte) |
+| Yapboz bölümü metni ve videosu | `lib/site.js` → `YAPBOZ` |
+| Google Search Console doğrulaması | `lib/site.js` → `SITE.googleDogrulama` |
 | **YouTube tanıtım videosu** | `lib/site.js` → `SITE.youtubeId` (sadece video ID'si, örn. `dQw4w9WgXcQ`) |
 | Bot ekran görüntüleri | `public/galeri/` klasörüne at — **otomatik listelenir**. Dosya adı başlık olur: `01-ana-ekran.png` → "Ana ekran" |
 | Güvenlik/ban metni | `lib/site.js` → `GUVENLIK` |
@@ -151,15 +175,41 @@ Vercel otomatik yeniden yayınlar.
 
 ## SEO — yayına girdikten sonra yapılacaklar
 
-1. [Google Search Console](https://search.google.com/search-console) → alan adını ekle (DNS doğrulaması)
-2. **Sitemaps** → `https://m2balıkbotu.com/sitemap.xml` gönder
-3. **URL Inspection** → ana sayfayı "Request Indexing"
-4. [Bing Webmaster Tools](https://www.bing.com/webmasters)'a da ekle (Yandex için de aynısı)
+1. [Google Search Console](https://search.google.com/search-console) → **m2balikbotu.com**'u
+   yeni mülk olarak ekle (Domain doğrulaması — DNS TXT kaydı).
+   - İstersen `lib/site.js` → `SITE.googleDogrulama` alanına konsolun verdiği
+     `content="..."` değerini yaz; site o zaman HTML etiketini de basar.
+2. **Sitemaps** → `https://m2balikbotu.com/sitemap.xml` gönder.
+3. **URL Inspection** → altı sayfanın her birini tek tek "Request Indexing" yap:
+   `/`, `/yapboz-botu`, `/metin2-balik-botu-nedir`, `/guncellemeler`, `/sss`, `/iletisim`
+4. Eski alan adı için Search Console'da **Change of Address** (Adres değişikliği)
+   aracını kullan — böylece eski adresin sıralama gücü yeni adrese aktarılır.
+5. [Bing Webmaster Tools](https://www.bing.com/webmasters)'a da ekle (Yandex için de aynısı).
 
-Sitede hazır olanlar: `sitemap.xml`, `robots.txt`, Open Graph, Twitter Card,
-JSON-LD (SoftwareApplication + Offer + FAQPage + Organization + WebSite),
-"Metin2 Balık Botu / Metin2 Fish Bot / Metin2 Angelbot / Bot de pescuit"
-anahtar kelimeleri ve İngilizce/Almanca/Romence tanıtım bölümü.
+### Sitemap neden bozuktu?
+
+Önceki sürümde sitemap `/#fiyatlar`, `/#sss` gibi **çapa (fragment)** adresleri
+içeriyordu. Google çapaları ayrı sayfa saymaz; bu yüzden Search Console
+"taranmadı / yinelenen sayfa" diyordu. Artık sitemap yalnızca **gerçek sayfaları**
+listeliyor ve kaynağı `lib/site.js` → `SAYFALAR` dizisi.
+**Yeni sayfa eklersen sadece o diziye ekle, sitemap kendiliğinden güncellenir.**
+
+Sitede hazır olanlar: `sitemap.xml`, `robots.txt`, `manifest.webmanifest`,
+Open Graph, Twitter Card, her sayfada **canonical**, kırıntı navigasyonu
+(BreadcrumbList) ve sayfaya özel JSON-LD:
+
+| Sayfa | Şema |
+|---|---|
+| `/` | SoftwareApplication + AggregateOffer + 2 × VideoObject |
+| `/yapboz-botu` | VideoObject + HowTo |
+| `/metin2-balik-botu-nedir` | Article + HowTo |
+| `/sss` | FAQPage |
+| `/guncellemeler` | ItemList |
+| `/iletisim` | ContactPage |
+| tüm sayfalar | Organization + WebSite (layout'ta) |
+
+> FAQPage şeması **sadece** `/sss` sayfasındadır. Aynı SSS içeriğini birden fazla
+> sayfada işaretlemek Google'da yinelenen işaretleme sayılır.
 
 ---
 

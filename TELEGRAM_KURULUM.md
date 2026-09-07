@@ -68,12 +68,12 @@ Ekledikten sonra **Redeploy**.
 Tarayıcının adres çubuğuna yapıştır — `TOKEN` ve `GIZLI` yerine kendi değerlerini yaz:
 
 ```
-https://api.telegram.org/botTOKEN/setWebhook?url=https://xn--m2balkbotu-1ub.com/api/telegram&secret_token=GIZLI
+https://api.telegram.org/botTOKEN/setWebhook?url=https://m2balikbotu.com/api/telegram&secret_token=GIZLI
 ```
 
 `{"ok":true,"result":true,...}` görürsen tamamdır.
 
-**Kontrol:** `https://m2balıkbotu.com/api/telegram` adresini aç —
+**Kontrol:** `https://m2balikbotu.com/api/telegram` adresini aç —
 `{"ok":true,"token":true,"gizli":true}` dönmeli.
 
 ---

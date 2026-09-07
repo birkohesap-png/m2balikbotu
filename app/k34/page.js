@@ -36,7 +36,7 @@ export default function Admin() {
   const [mesaj, setMesaj] = useState('');
 
   const yukle = useCallback(async (q = '') => {
-    const r = await fetch('/api/admin/keys?ara=' + encodeURIComponent(q), { cache: 'no-store' });
+    const r = await fetch('/api/k34/keys?ara=' + encodeURIComponent(q), { cache: 'no-store' });
     if (r.status === 401) {
       setGirisli(false);
       return;
@@ -56,7 +56,7 @@ export default function Admin() {
   async function girisYap(e) {
     e.preventDefault();
     setHata('');
-    const r = await fetch('/api/admin/login', {
+    const r = await fetch('/api/k34/login', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ sifre }),
@@ -69,14 +69,14 @@ export default function Admin() {
   }
 
   async function cikis() {
-    await fetch('/api/admin/login', { method: 'DELETE' });
+    await fetch('/api/k34/login', { method: 'DELETE' });
     setGirisli(false);
     setListe([]);
   }
 
   async function uret(e) {
     e.preventDefault();
-    const r = await fetch('/api/admin/keys', {
+    const r = await fetch('/api/k34/keys', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(yeni),
@@ -91,7 +91,7 @@ export default function Admin() {
   }
 
   async function islem(id, govde) {
-    await fetch('/api/admin/keys/' + id, {
+    await fetch('/api/k34/keys/' + id, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(govde),
@@ -102,7 +102,7 @@ export default function Admin() {
 
   async function sil(id) {
     if (!confirm('Bu anahtar tamamen silinsin mi? (Geri alınamaz)')) return;
-    await fetch('/api/admin/keys/' + id, { method: 'DELETE' });
+    await fetch('/api/k34/keys/' + id, { method: 'DELETE' });
     setAcik(null);
     yukle(ara);
   }
@@ -112,7 +112,7 @@ export default function Admin() {
       setAcik(null);
       return;
     }
-    const r = await fetch('/api/admin/keys/' + id, { cache: 'no-store' });
+    const r = await fetch('/api/k34/keys/' + id, { cache: 'no-store' });
     const d = await r.json();
     if (d.ok) {
       setCihazlar(d.cihazlar);

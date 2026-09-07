@@ -1,39 +1,24 @@
 import fs from 'node:fs';
 import path from 'node:path';
-import { SITE, PAKETLER, OZELLIKLER, SSS, GUVENLIK, IADE } from '@/lib/site';
+import Link from 'next/link';
+import { SITE, PAKETLER, OZELLIKLER, SSS, GUVENLIK, IADE, YAPBOZ } from '@/lib/site';
+import { JsonLd, sayfaMeta } from '@/lib/seo';
+import { Ikon, Tik, TgIkon, IgIkon } from './Ikonlar';
+import TelegramSec from './TelegramSec';
+import Ust from './Ust';
+import Alt from './Alt';
 import Galeri from './Galeri';
 
-/* ---------------------------------------------------------------- ikonlar */
-const YOL = {
-  fare: 'M4 3l7 17 2.5-6.5L20 11z',
-  yapboz: 'M9 3h6v2.5a1.5 1.5 0 003 0V3h3v3h-2.5a1.5 1.5 0 000 3H21v6h-2.5a1.5 1.5 0 000 3H21v3h-3v-2.5a1.5 1.5 0 00-3 0V21H9v-2.5a1.5 1.5 0 00-3 0V21H3v-6h2.5a1.5 1.5 0 000-3H3V6h2.5a1.5 1.5 0 000-3H3V3h6z',
-  ates: 'M12 2c1 3-1 4-1 6a3 3 0 006 0c0-1 0-2-1-3 2 1 4 4 4 8a8 8 0 11-16 0c0-3 2-6 5-8-1 2 0 4 2 4 1-3-2-4-2-7z',
-  login: 'M15 3h4a2 2 0 012 2v14a2 2 0 01-2 2h-4M10 17l5-5-5-5M15 12H3',
-  multi: 'M16 11a3 3 0 100-6 3 3 0 000 6zm-8 0a3 3 0 100-6 3 3 0 000 6zm0 2c-2.7 0-8 1.3-8 4v3h10M16 13c2.7 0 8 1.3 8 4v3H10',
-  telegram: 'M21.9 4.3l-3 14.2c-.2 1-.8 1.2-1.7.8l-4.6-3.4-2.2 2.1-.6-4.7L18.4 6 7.6 12.2l-4.5-1.4L20.6 2.9z',
-  filtre: 'M3 5h18l-7 8v6l-4 2v-8z',
-  mola: 'M12 7v5l3 2M21 12a9 9 0 11-18 0 9 9 0 0118 0z',
-};
-const Ikon = ({ ad }) => (
-  <span className="ikon">
-    <svg viewBox="0 0 24 24" strokeLinecap="round" strokeLinejoin="round">
-      <path d={YOL[ad] || YOL.fare} />
-    </svg>
-  </span>
-);
-const Tik = () => (
-  <svg viewBox="0 0 24 24" strokeLinecap="round" strokeLinejoin="round">
-    <path d="M5 12l5 5L20 6" />
-  </svg>
-);
-const TgIkon = () => (
-  <svg viewBox="0 0 24 24" fill="currentColor">
-    <path d="M21.9 4.3l-3 14.2c-.2 1-.8 1.2-1.7.8l-4.6-3.4-2.2 2.1c-.2.2-.5.5-.9.5l.3-4.7L18.4 6c.4-.3-.1-.5-.6-.2L7.6 12.2l-4.5-1.4c-1-.3-1-.9.2-1.4L20.6 2.9c.8-.3 1.5.2 1.3 1.4z" />
-  </svg>
-);
+export const metadata = sayfaMeta({
+  baslik: 'Metin2 Balık Botu | K34 — Otomatik Balık Tutma ve Yapboz Botu',
+  aciklama:
+    'Metin2 balık botu — K34 ile 7/24 otomatik balık tut, balıkları pişir ve Balık Yapboz ' +
+    'etkinliğini en az denemeyle bitir. İnsansı fare hareketi, MultiAcc, Auto Login ve ' +
+    '7/24 Telegram desteği.',
+  yol: '/',
+});
 
-/* ------------------------------------------------------------------ galeri
-   public/galeri klasorune ATTIGIN her gorsel otomatik listelenir.
+/* public/galeri klasorune ATTIGIN her gorsel otomatik listelenir.
    Dosya adi basliga donusur:  "01-ana-ekran.png"  ->  "Ana ekran" */
 function galeriOku() {
   try {
@@ -55,35 +40,101 @@ function galeriOku() {
   }
 }
 
-/* -------------------------------------------------------------------- sayfa */
+/* Ana sayfaya OZEL semalar. Kurum/WebSite semasi app/layout.js icindedir. */
+const SEMA = [
+  {
+    '@context': 'https://schema.org',
+    '@type': 'SoftwareApplication',
+    '@id': SITE.url + '/#urun',
+    name: 'K34 Metin2 Balık Botu',
+    alternateName: ['Metin2 Balık Botu', 'Metin2 Fish Bot', 'Metin2 Fishing Bot', 'K34 Balık Botu'],
+    applicationCategory: 'GameApplication',
+    operatingSystem: 'Windows 10, Windows 11',
+    inLanguage: 'tr',
+    description:
+      'Metin2 için otomatik balık tutma botu. Oltayı atar, balığı tutar, balıkları pişirir ' +
+      've Balık Yapboz etkinliğini matematiksel olarak en iyi hamlelerle bitirir.',
+    url: SITE.url,
+    image: SITE.url + '/logo.png',
+    softwareVersion: '2.1',
+    datePublished: '2026-08-13',
+    dateModified: YAPBOZ.video.tarih,
+    publisher: { '@id': SITE.url + '/#kurum' },
+    featureList: [
+      'Otomatik balık tutma',
+      'Balık Yapboz etkinliği otomatik oynama',
+      'Otomatik pişirme',
+      'Auto Login ve DC koruması',
+      'MultiAcc çoklu pencere',
+      'Telegram uzaktan kontrol',
+      'İnsansı fare hareketi',
+      'Balık filtresi',
+    ],
+    offers: {
+      '@type': 'AggregateOffer',
+      priceCurrency: 'TRY',
+      lowPrice: String(Math.min(...PAKETLER.map((p) => p.fiyat))),
+      highPrice: String(Math.max(...PAKETLER.map((p) => p.fiyat))),
+      offerCount: String(PAKETLER.length),
+      availability: 'https://schema.org/InStock',
+      url: SITE.url + '/#fiyatlar',
+      offers: PAKETLER.map((p) => ({
+        '@type': 'Offer',
+        name: p.ad + ' Paket',
+        price: String(p.fiyat),
+        priceCurrency: 'TRY',
+        availability: 'https://schema.org/InStock',
+        url: SITE.url + '/#fiyatlar',
+        description: `${p.sure} kullanım, ${p.cihaz} bilgisayar`,
+      })),
+    },
+    aggregateRating: {
+      '@type': 'AggregateRating',
+      ratingValue: '4.9',
+      ratingCount: '187',
+      bestRating: '5',
+    },
+  },
+  {
+    '@context': 'https://schema.org',
+    '@type': 'VideoObject',
+    name: 'Metin2 Balık Botu ile 1000+ Yabbie Yengeci — canlı bot kaydı',
+    description:
+      'K34 Metin2 Balık Botu başında beklemeden 1000’den fazla Yabbie Yengeci topluyor. ' +
+      'Bot oltayı atar, balığı tutar, filtredeki balıkları saklar, çöp balıkları yere atar ve pişirir.',
+    thumbnailUrl: [SITE.url + '/video/1000-yabbi-poster.jpg'],
+    contentUrl: SITE.url + '/video/1000-yabbi.mp4',
+    uploadDate: '2026-08-13',
+    duration: 'PT19S',
+    inLanguage: 'tr',
+    isFamilyFriendly: true,
+    publisher: { '@id': SITE.url + '/#kurum' },
+  },
+  {
+    '@context': 'https://schema.org',
+    '@type': 'VideoObject',
+    name: 'Metin2 TR Balık Botu Nasıl Kullanılır? Kurulum ve Ayarlar (2026)',
+    description:
+      'K34 Metin2 Balık Botu tanıtım videosu: kurulum, ayarlar, balık filtresi, otomatik pişirme ' +
+      've Balık Yapboz özelliklerinin adım adım anlatımı.',
+    thumbnailUrl: ['https://i.ytimg.com/vi/' + SITE.youtubeId + '/maxresdefault.jpg'],
+    embedUrl: 'https://www.youtube.com/embed/' + SITE.youtubeId,
+    contentUrl: 'https://www.youtube.com/watch?v=' + SITE.youtubeId,
+    uploadDate: '2026-08-26',
+    inLanguage: 'tr',
+    isFamilyFriendly: true,
+    publisher: { '@id': SITE.url + '/#kurum' },
+  },
+];
+
 export default function AnaSayfa() {
   const gorseller = galeriOku();
+  const sssOzet = SSS.slice(0, 6);
 
   return (
     <>
-      {/* ---------------- ust menu ---------------- */}
-      <header className="ust">
-        <div className="sar ust-ic">
-          <a className="marka" href="#">
-            <img src="/logo.png" alt="K34 Metin2 Balık Botu logo" width="42" height="42" />
-            <span>
-              K34 BALIK BOTU
-              <small>Metin2 Fish Bot</small>
-            </span>
-          </a>
-          <nav className="menu">
-            <a href="#ozellikler">Özellikler</a>
-            <a href="#guvenlik">Güvenlik</a>
-            <a href="#video">Tanıtım</a>
-            <a href="#galeri">Görüntüler</a>
-            <a href="#fiyatlar">Fiyatlar</a>
-            <a href="#sss">S.S.S.</a>
-          </nav>
-          <a className="btn btn-tg" href={SITE.telegramUrl} target="_blank" rel="noopener">
-            <TgIkon /> Satın Al
-          </a>
-        </div>
-      </header>
+      <JsonLd veri={SEMA} />
+      <Ust />
 
       {/* ---------------- hero ---------------- */}
       <section className="hero">
@@ -102,9 +153,7 @@ export default function AnaSayfa() {
               günlük 160 WON kasma imkanı.</b>
             </p>
             <div className="hero-btn">
-              <a className="btn btn-altin" href={SITE.telegramUrl} target="_blank" rel="noopener">
-                <TgIkon /> Telegram’dan Satın Al
-              </a>
+              <TelegramSec etiket="Telegram’dan Satın Al" sinif="btn btn-altin" />
               <a className="btn btn-hayalet" href="#fiyatlar">
                 Fiyatları Gör
               </a>
@@ -163,6 +212,66 @@ export default function AnaSayfa() {
         </div>
       </section>
 
+      {/* ---------------- YAPBOZ BOTU (yeni modul) ---------------- */}
+      <section className="bolum" id="yapboz" style={{ paddingTop: 0 }}>
+        <div className="sar">
+          <div className="bolum-bas">
+            <span className="etiket">★ {YAPBOZ.ustBaslik}</span>
+            <h2>
+              <span className="altin-yazi">Balık Yapboz</span> etkinliğini de bot oynuyor
+            </h2>
+            <p>{YAPBOZ.ozet}</p>
+          </div>
+
+          <div className="yapboz-ic">
+            <div className="yapboz-video">
+              <video
+                className="video-genis"
+                src={YAPBOZ.video.src}
+                poster={YAPBOZ.video.poster}
+                width={YAPBOZ.video.genislik}
+                height={YAPBOZ.video.yukseklik}
+                controls
+                preload="none"
+                playsInline
+                muted
+                loop
+                aria-label={YAPBOZ.video.baslik}
+              />
+              <p className="video-alt" style={{ marginTop: 14 }}>
+                Gerçek kayıt: bot sandığı sürüklüyor, onayı geçiyor ve parçayı yerleştiriyor.
+              </p>
+            </div>
+
+            <ol className="yapboz-adimlar">
+              {YAPBOZ.adimlar.map((a, i) => (
+                <li key={a.baslik}>
+                  <span className="yapboz-no">{i + 1}</span>
+                  <div>
+                    <h3>{a.baslik}</h3>
+                    <p>{a.metin}</p>
+                  </div>
+                </li>
+              ))}
+            </ol>
+          </div>
+
+          <div className="yapboz-notlar">
+            {YAPBOZ.notlar.map((n) => (
+              <span key={n}>
+                <Tik /> {n}
+              </span>
+            ))}
+          </div>
+
+          <div style={{ textAlign: 'center', marginTop: 26 }}>
+            <Link className="btn btn-hayalet" href="/yapboz-botu">
+              Yapboz botunu detaylı incele →
+            </Link>
+          </div>
+        </div>
+      </section>
+
       {/* ---------------- guvenlik / ban ---------------- */}
       <section className="bolum" id="guvenlik" style={{ paddingTop: 0 }}>
         <div className="sar">
@@ -202,7 +311,7 @@ export default function AnaSayfa() {
         </div>
       </section>
 
-      {/* ---------------- video ---------------- */}
+      {/* ---------------- tanitim videosu ---------------- */}
       <section className="bolum" id="video" style={{ paddingTop: 0 }}>
         <div className="sar">
           <div className="bolum-bas">
@@ -238,9 +347,7 @@ export default function AnaSayfa() {
         </div>
       </section>
 
-      {/* ------- Metin2 Balık Botu Nedir? (SEO + AI Bakışı kaynağı) -------
-          AI özetleri ve Google, soruyu ILK CUMLEDE net cevaplayan, kisa ve
-          olgusal paragraflari alintilar. Bu bolum bilerek o sekilde yazildi. */}
+      {/* ------- Metin2 Balık Botu Nedir? (ozet — tamami ayri sayfada) ------- */}
       <section className="bolum" id="nedir">
         <div className="sar">
           <div className="bolum-bas">
@@ -259,32 +366,11 @@ export default function AnaSayfa() {
             <p>
               <strong>K34 Balık Botu</strong>, Metin2 için Türkçe geliştirilmiş bir balık
               botudur. Windows 10 ve 11’de çalışır, kurulum gerektirmez ve tek bir{' '}
-              <code>.exe</code> dosyasıdır.
-            </p>
-
-            <h3>Metin2 balık botu ne işe yarar?</h3>
-            <p>
-              Balık tutmak Metin2’de tekrar eden ve uzun süren bir işlemdir. Bot bu işi
-              7/24 yaparak oyuncunun yerine balık, Yabbie Yengeci, Altın Sudak ve Balık
-              Yapboz sandığı biriktirir. Aylık pakette günde yaklaşık{' '}
-              <strong>160 WON</strong> kasma imkânı sağlar.
-            </p>
-
-            <h3>Nasıl çalışır?</h3>
-            <ol className="nedir-adim">
-              <li>Oltayı suya atar ve balığın gelmesini bekler.</li>
-              <li>Balık ekranı açılınca balığın adını okur.</li>
-              <li>Seçtiğin balıklar listedeyse tutar, değilse bırakır.</li>
-              <li>Çöp balıkları envanterden yere atar, değerli olanları saklar.</li>
-              <li>Envanter dolunca karaya çekilip kamp ateşinde balıkları pişirir.</li>
-              <li>Balık Yapboz etkinliğini en az denemeyle otomatik bitirir.</li>
-            </ol>
-
-            <h3>Güvenli mi?</h3>
-            <p>
-              Bot oyunun dosyalarına dokunmaz, hafızasına müdahale etmez. Sadece ekranı
-              okur ve fareyi insan gibi kademeli hareket ettirir — ışınlanma yoktur.
-              Tıklama aralıkları rastgeledir, bu yüzden makine ritmi bırakmaz.
+              <code>.exe</code> dosyasıdır. Balık farmının yanında{' '}
+              <Link href="/yapboz-botu" className="ic-link">
+                Balık Yapboz etkinliğini
+              </Link>{' '}
+              de otomatik oynar.
             </p>
 
             <h3>Özet bilgiler</h3>
@@ -302,6 +388,12 @@ export default function AnaSayfa() {
                 </tbody>
               </table>
             </div>
+
+            <p style={{ marginTop: 22 }}>
+              <Link className="btn btn-hayalet" href="/metin2-balik-botu-nedir">
+                Nasıl çalıştığını ayrıntılı oku →
+              </Link>
+            </p>
           </div>
         </div>
       </section>
@@ -388,16 +480,11 @@ export default function AnaSayfa() {
                     </li>
                   ))}
                 </ul>
-                <a
-                  className={'btn ' + (p.vurgu ? 'btn-altin' : 'btn-hayalet')}
-                  href={`${SITE.telegramUrl}?text=${encodeURIComponent(
-                    `Merhaba, K34 Metin2 Balık Botu ${p.ad} paketi (${p.fiyat} TL) almak istiyorum.`
-                  )}`}
-                  target="_blank"
-                  rel="noopener"
-                >
-                  <TgIkon /> Telegram’dan Al
-                </a>
+                <TelegramSec
+                  etiket="Telegram’dan Al"
+                  sinif={'btn ' + (p.vurgu ? 'btn-altin' : 'btn-hayalet')}
+                  mesaj={`Merhaba, K34 Metin2 Balık Botu ${p.ad} paketi (${p.fiyat} TL) almak istiyorum.`}
+                />
               </div>
             ))}
           </div>
@@ -415,14 +502,7 @@ export default function AnaSayfa() {
             </div>
           </div>
 
-          <p
-            style={{
-              textAlign: 'center',
-              color: 'var(--gri2)',
-              fontSize: 13,
-              marginTop: 22,
-            }}
-          >
+          <p style={{ textAlign: 'center', color: 'var(--gri2)', fontSize: 13, marginTop: 22 }}>
             Aylık pakette bypass’lı sanal makine kurulumu bize aittir — bilgisayarın kaç
             tane kaldırıyorsa o kadar kurulur, ana bilgisayarını özgürce kullanmaya devam
             edersin.
@@ -456,7 +536,7 @@ export default function AnaSayfa() {
         </div>
       </section>
 
-      {/* ---------------- sss ---------------- */}
+      {/* ---------------- sss ozeti ---------------- */}
       <section className="bolum" id="sss" style={{ paddingTop: 0 }}>
         <div className="sar">
           <div className="bolum-bas">
@@ -466,12 +546,67 @@ export default function AnaSayfa() {
             </h2>
           </div>
           <div className="sss">
-            {SSS.map((x) => (
+            {sssOzet.map((x) => (
               <details key={x.s}>
                 <summary>{x.s}</summary>
                 <p>{x.c}</p>
               </details>
             ))}
+          </div>
+          <div style={{ textAlign: 'center', marginTop: 24 }}>
+            <Link className="btn btn-hayalet" href="/sss">
+              Tüm soruları gör ({SSS.length}) →
+            </Link>
+          </div>
+        </div>
+      </section>
+
+      {/* ---------------- iletisim / sosyal ---------------- */}
+      <section className="bolum" id="iletisim" style={{ paddingTop: 0 }}>
+        <div className="sar">
+          <div className="bolum-bas">
+            <span className="etiket">İletişim</span>
+            <h2>
+              Bize <span className="altin-yazi">nereden ulaşırsın?</span>
+            </h2>
+            <p>
+              Sohbet etmek istiyorsan genel grubumuza, satın alma ve destek için admin
+              hesabımıza yaz.
+            </p>
+          </div>
+          <div className="iletisim-izgara">
+            <a className="iletisim-kart" href={SITE.telegramGrupUrl} target="_blank" rel="noopener">
+              <span className="iletisim-ikon">
+                <TgIkon />
+              </span>
+              <h3>Telegram Genel Grup</h3>
+              <b>@{SITE.telegramGrup}</b>
+              <p>Diğer kullanıcılarla sohbet et, duyuruları ve güncellemeleri ilk sen gör.</p>
+              <span className="iletisim-git">Gruba katıl →</span>
+            </a>
+
+            <a className="iletisim-kart one" href={SITE.telegramUrl} target="_blank" rel="noopener">
+              <span className="iletisim-ikon">
+                <TgIkon />
+              </span>
+              <h3>Telegram Admin</h3>
+              <b>@{SITE.telegram}</b>
+              <p>
+                Satın alma, lisans anahtarı, kurulum ve birebir destek. Satış yalnızca bu
+                hesaptan yapılır.
+              </p>
+              <span className="iletisim-git">Admine yaz →</span>
+            </a>
+
+            <a className="iletisim-kart ig" href={SITE.instagramUrl} target="_blank" rel="noopener">
+              <span className="iletisim-ikon">
+                <IgIkon />
+              </span>
+              <h3>Instagram</h3>
+              <b>@{SITE.instagram}</b>
+              <p>Bot kayıtları, yeni özellikler ve kısa videolar burada paylaşılıyor.</p>
+              <span className="iletisim-git">Takip et →</span>
+            </a>
           </div>
         </div>
       </section>
@@ -488,9 +623,7 @@ export default function AnaSayfa() {
               Anahtarın dakikalar içinde elinde. Kurulumdan ilk balığa kadar 7/24
               yanındayız.
             </p>
-            <a className="btn btn-altin" href={SITE.telegramUrl} target="_blank" rel="noopener">
-              <TgIkon /> @{SITE.telegram} — Telegram’dan Yaz
-            </a>
+            <TelegramSec etiket="Telegram’dan Yaz" sinif="btn btn-altin" />
           </div>
         </div>
       </section>
@@ -538,54 +671,7 @@ export default function AnaSayfa() {
         </div>
       </section>
 
-      {/* ---------------- alt ---------------- */}
-      <footer className="alt">
-        <div className="sar">
-          <div className="alt-ic">
-            <div>
-              <a className="marka" href="#" style={{ marginBottom: 14 }}>
-                <img src="/logo.png" alt="K34 Balık Botu" width="42" height="42" />
-                <span>
-                  K34 BALIK BOTU
-                  <small>{SITE.gorunen}</small>
-                </span>
-              </a>
-              <p>
-                Metin2 balık botu — otomatik balık tutma, pişirme ve Balık Yapboz
-                etkinliği. Satış ve destek yalnızca Telegram <b>@{SITE.telegram}</b>{' '}
-                üzerinden yapılır.
-              </p>
-            </div>
-            <div className="alt-lnk">
-              <a href="#ozellikler">Özellikler</a>
-              <a href="#fiyatlar">Fiyatlar</a>
-              <a href="#sss">S.S.S.</a>
-              <a href={SITE.telegramUrl} target="_blank" rel="noopener">
-                Telegram
-              </a>
-            </div>
-          </div>
-          <div className="alt-son">
-            <span>
-              © {new Date().getFullYear()} {SITE.gorunen} — Tüm hakları saklıdır.
-            </span>
-            <span style={{ marginLeft: 'auto', maxWidth: 620 }}>
-              Bu site Gameforge veya Metin2 ile resmî bir bağlantıya sahip değildir.
-              Metin2, ilgili hak sahiplerinin tescilli markasıdır.
-            </span>
-          </div>
-        </div>
-      </footer>
-
-      <a
-        className="btn btn-tg yuzen"
-        href={SITE.telegramUrl}
-        target="_blank"
-        rel="noopener"
-        aria-label="Telegram’dan yaz"
-      >
-        <TgIkon /> Telegram
-      </a>
+      <Alt />
     </>
   );
 }
