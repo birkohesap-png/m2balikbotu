@@ -15,9 +15,19 @@ export async function OPTIONS() {
 /**
  * Botun lisans dogrulama ucu.
  * POST { anahtar, hwid, surum? }
- * ->   { ok, sebep, kalan_sn, paket, max_cihaz, cihaz_sayisi, jeton }
+ * ->   { ok, sebep, kalan_sn, paket, max_cihaz, cihaz_sayisi, jeton, vk }
  *
  * sebep: gecerli | gecersiz | iptal | suresi_doldu | cihaz_limiti | hata
+ *
+ * vk = VARLIK ANAHTARI. Botun sablon gorselleri ve yapboz beyni bu anahtarla
+ * sifreli paketlenir; anahtar olmadan cozulemezler. Eyl 2026'daki kirilmadan
+ * sonra eklendi: saldirgan sahte modulle lisans kontrolunu "gecerli" yapmisti,
+ * ama lisans artik bir bool degil bir ANAHTAR uretiyor - bool'u True yapmak
+ * varliklari cozmuyor.
+ *
+ * SADECE gecerli lisansa donulur. K34_VARLIK_ANAHTARI ortam degiskeni
+ * ayarlanmazsa alan hic gonderilmez ve sifreli surumler calismaz (fail-closed).
+ * Deger, bot deposundaki kalkan_gizli.json icindeki "vk" ile AYNI olmali.
  */
 export async function POST(req) {
   let govde;
@@ -99,6 +109,7 @@ export async function POST(req) {
       cihaz_sayisi: say2[0].n,
       bitis: bitisEpoch,
       jeton: lisansJetonu(anahtar, hwid, bitisEpoch),
+      vk: process.env.K34_VARLIK_ANAHTARI || undefined,
     });
   } catch (e) {
     return yanit({ ok: false, sebep: 'hata', mesaj: String(e.message || e) }, 500);
