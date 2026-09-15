@@ -210,7 +210,8 @@ test('adayYap ve durumuDuzelt bozuk veriye dayanikli', () => {
   const a = adayYap({ hwid: 'abc', yas: '12.5', veri: { pc: 'VM1', bot: { calisiyor: true },
     hesaplar: [{ ad: 'Hesap 2' }], sira: { mola_cikis: 1, mola_hazir: 0, reset: true } } });
   assert.deepEqual(a, { hwid: 'ABC', ad: 'Hesap 2', yas_sn: 12.5, calisiyor: true,
-    mola_cikis: true, mola_hazir: false, reset: true, reset_hazir: false });
+    mola_cikis: true, mola_hazir: false, reset: true, reset_hazir: false,
+    giris: false, giris_hazir: false });
   const b = adayYap({ hwid: 'X', yas: null, veri: null });
   assert.equal(b.calisiyor, false);
   assert.equal(b.mola_cikis, false);
@@ -235,16 +236,87 @@ test('bildirim metinleri HTML kacisli, /sira metni uretiliyor', () => {
   const ad = [pc('A'), pc('B', { reset: true })];
   const d = sor({}, ad, 'A', OGLE).durum;
   const metin = siraMetni(d, ad, OGLE + 2 * DK);
-  assert.match(metin, /Şu an dışarıda: <b>A<\/b>/);
+  assert.match(metin, /Şu an: <b>A<\/b> — molada/);
   assert.match(metin, /Mola turu 1/);
   assert.match(metin, /Metin\+ reset/);
-  assert.match(siraMetni({}, [], OGLE), /açık bilgisayar yok/);
+  assert.match(siraMetni({}, [], OGLE), /bekleyen bilgisayar yok/);
 });
 
 test('TR saati UTC+3', () => {
   assert.deepEqual(trZaman(GECE4), { gun: '2026-09-15', saat: 4 });
   assert.equal(resetSaatiMi(GECE4), true);
   assert.equal(resetSaatiMi(Date.UTC(2026, 8, 15, 7, 0, 0)), false, 'TR 10:00 disarida');
+});
+
+/* ------------------------------------------------ sirali giris (DC) */
+
+const dc = (hwid, ek = {}) => pc(hwid, { mola_cikis: false, mola_hazir: false, giris: true, giris_hazir: true, ...ek });
+
+test('giris: sirayla, tek tek, girince 5 dk sonra siradaki', () => {
+  const ad = [dc('A'), dc('B'), dc('C')];
+  assert.equal(sor({}, ad, 'B', OGLE, 'giris').cevap.sebep, 'sira_degil');
+  let r = sor({}, ad, 'A', OGLE, 'giris');
+  assert.equal(r.cevap.izin, true);
+  assert.equal(r.cevap.sira_no, 1);
+  assert.equal(r.cevap.toplam, 3);
+  assert.equal(sor(r.durum, ad, 'B', OGLE + DK, 'giris').cevap.sebep, 'disarida');
+  // A girdi; A'nin durum kaydi hala "giris bekliyor" diyor olabilir - siradaki B olmali
+  const bt = bitti(r.durum, ad, 'A', OGLE + 2 * DK, 'giris');
+  assert.equal(bt.olaylar[0].siradaki, 'B');
+  const adSonra = [dc('A', { giris_hazir: false }), dc('B'), dc('C')];
+  assert.equal(sor(bt.durum, adSonra, 'B', OGLE + 6 * DK, 'giris').cevap.sebep, 'ara');
+  r = sor(bt.durum, adSonra, 'B', OGLE + 7 * DK, 'giris');
+  assert.equal(r.cevap.izin, true);
+  assert.equal(r.cevap.sira_no, 2);
+  assert.equal(r.cevap.toplam, 3);
+});
+
+test('giris: ayni PC tekrar DC olursa yine girebilir (gunluk liste gibi suzmez)', () => {
+  const ad = [dc('A')];
+  let d = sor({}, ad, 'A', OGLE, 'giris').durum;
+  d = bitti(d, ad, 'A', OGLE + 2 * DK, 'giris').durum;
+  const tekrar = sor(d, ad, 'A', OGLE + 8 * DK, 'giris');
+  assert.equal(tekrar.cevap.izin, true);
+  const uzun = sor(bitti(tekrar.durum, ad, 'A', OGLE + 9 * DK, 'giris').durum, ad, 'A', OGLE + 60 * DK, 'giris');
+  assert.equal(uzun.cevap.sira_no, 1, '30 dk sonra yeni kopma: numara bastan');
+});
+
+test('giris onceligi: DC bekleyen varken mola ve reset verilmez', () => {
+  const ad = [pc('A', { reset: true, reset_hazir: true }), dc('B')];
+  assert.equal(sor({}, ad, 'A', OGLE, 'mola').cevap.sebep, 'giris_oncelikli');
+  assert.equal(sor({}, ad, 'A', GECE4, 'reset').cevap.sebep, 'giris_oncelikli');
+  let d = sor({}, ad, 'B', OGLE, 'giris').durum;
+  d = bitti(d, [pc('A'), dc('B', { giris_hazir: false })], 'B', OGLE + 2 * DK, 'giris').durum;
+  assert.equal(sor(d, [pc('A'), dc('B', { giris_hazir: false })], 'A', OGLE + 7 * DK, 'mola').cevap.izin, true);
+});
+
+test('isteyenin KENDI eski kaydi onceligi bozmaz', () => {
+  // A mola istiyor ama durum kaydi 30 sn onceki "giris bekliyorum" hali
+  const ad = [pc('A', { giris: true, giris_hazir: true })];
+  assert.equal(sor({}, ad, 'A', OGLE, 'mola').cevap.izin, true);
+});
+
+test('internet herkese birden donunce disaridakinin hakki yanlislikla dusmez', () => {
+  let d = sor({}, [dc('A'), dc('B')], 'A', OGLE, 'giris').durum;
+  // 10 dk internet yok; donuste B soruyor, B'nin KENDI kaydi da eski
+  const eskiler = [dc('A', { yas_sn: 600 }), dc('B', { yas_sn: 600 })];
+  const b = sor(d, eskiler, 'B', OGLE + 10 * DK, 'giris');
+  assert.equal(b.cevap.sebep, 'disarida');
+  assert.equal(b.olaylar.length, 0);
+  // B'nin kaydi yenilendi ama A hala sessiz -> A gercekten kopuk
+  const b2 = sor(d, [dc('A', { yas_sn: 600 }), dc('B', { yas_sn: 10 })], 'B', OGLE + 11 * DK, 'giris');
+  assert.equal(b2.olaylar[0].tip, 'zaman_asimi');
+});
+
+test('giris bildirim metinleri', () => {
+  assert.match(olayMetni({ tur: 'giris', tip: 'basladi', ad: 'VM2', sira_no: 1, toplam: 4 }), /Sıralı giriş[\s\S]*VM2<\/b> oyuna giriyor \(1\/4\)/);
+  assert.match(olayMetni({ tur: 'giris', tip: 'bitti', ad: 'VM2', siradaki: 'VM3' }), /oyuna girdi[\s\S]*Sıradaki: <b>VM3/);
+  assert.match(olayMetni({ tur: 'giris', tip: 'iptal', ad: 'VM2' }), /girişten vazgeçti/);
+  const ad = [dc('A'), dc('B')];
+  const d = sor({}, ad, 'A', OGLE, 'giris').durum;
+  const m = siraMetni(d, ad, OGLE + DK);
+  assert.match(m, /oyuna giriyor/);
+  assert.match(m, /Giriş bekleyenler[\s\S]*🚪 A[\s\S]*⏳ B/);
 });
 
 /* ---------------------------------------------------------- simulasyon */
@@ -382,6 +454,86 @@ test('SIMULASYON: disaridaki PC kapanirsa sira kilitlenmez', () => {
   const sonraki = kayit.filter((k) => k.hwid !== 'PC2');
   assert.ok(sonraki.length >= 4, 'PC1 ve PC3 molaya devam etti');
   cakismaYok(kayit);
+});
+
+/* Internet kopmasi: tum PC'ler ayni anda oyundan atilir, internet bir sure
+   yok (kimse ne sorar ne durum yollar), sonra geri gelir. Durum kayitlari
+   internet donduktan sonra ilk 40 sn eski gorunur. */
+function simuleDC({ n, bas, kopus, yokDk, sureSaat, tohum = 5, molaAcik = true }) {
+  const rnd = prng(tohum);
+  const kopusBitis = kopus + yokDk * DK;
+  const pcs = Array.from({ length: n }, (_, i) => ({
+    hwid: 'PC' + (i + 1), bagli: true, disarida: null, talepBas: null, istenen: null, sonSor: 0,
+  }));
+  let durum = {};
+  const kayit = [];
+  const internetYok = (t) => t >= kopus && t < kopusBitis;
+  const yas = (t) => (internetYok(t) ? (t - kopus) / 1000 + 15 : t - kopusBitis < 40000 ? (kopusBitis - kopus) / 1000 : 15);
+
+  const adaylar = (t) => pcs.map((p) => {
+    const hazir = !!p.talepBas && !p.disarida && t - p.talepBas >= 2000;
+    return {
+      hwid: p.hwid, ad: p.hwid, yas_sn: yas(t), calisiyor: true,
+      mola_cikis: molaAcik, mola_hazir: hazir && p.istenen === 'mola',
+      reset: false, reset_hazir: false,
+      giris: true, giris_hazir: hazir && p.istenen === 'giris',
+    };
+  });
+
+  for (let t = bas; t <= bas + sureSaat * 3600 * 1000; t += 5000) {
+    if (t === kopus || (t > kopus && t - 5000 < kopus)) {
+      for (const p of pcs) if (!p.disarida) { p.bagli = false; p.talepBas = null; }
+    }
+    if (internetYok(t)) continue;
+    const sira = [...pcs].sort(() => rnd() - 0.5);
+    for (const p of sira) {
+      if (p.disarida) {
+        if (t >= p.disarida.donus) {
+          const r = karar({ durum, adaylar: adaylar(t), simdi: t,
+            istek: { hwid: p.hwid, tur: p.disarida.tur, tip: 'bitti', ad: p.hwid } });
+          durum = r.durum;
+          kayit.push({ hwid: p.hwid, tur: p.disarida.tur, cikis: p.disarida.cikis, donus: t });
+          p.bagli = true; p.disarida = null; p.talepBas = null; p.sonSor = t;
+        }
+        continue;
+      }
+      const istenen = !p.bagli ? 'giris' : (molaAcik && t - bas >= 20 * DK ? 'mola' : null);
+      if (!istenen) { p.talepBas = null; continue; }
+      if (p.istenen !== istenen || !p.talepBas) { p.istenen = istenen; p.talepBas = t; }
+      if (t - p.talepBas < 45000 || t - p.sonSor < 20000) continue;
+      p.sonSor = t;
+      const sure = 10 * 60;
+      const r = karar({ durum, adaylar: adaylar(t), simdi: t,
+        istek: { hwid: p.hwid, tur: istenen, tip: 'sor', ad: p.hwid, sure_sn: sure } });
+      durum = r.durum;
+      if (r.cevap.izin) {
+        const cikis = t + 10000;
+        const disari = istenen === 'mola' ? sure * 1000 : 0;
+        p.disarida = { tur: istenen, cikis, donus: cikis + disari + 2 * DK };
+      }
+    }
+  }
+  return kayit;
+}
+
+test('SIMULASYON: internet kopunca 6 PC tek tek girer, girisler arasi >= 5 dk, arada mola yok', () => {
+  for (const tohum of [3, 8, 21]) {
+    const bas = OGLE - 3 * 3600 * 1000;
+    const kopus = bas + 47 * DK; // biri molada olabilir
+    const kayit = simuleDC({ n: 6, bas, kopus, yokDk: 12, sureSaat: 3, tohum });
+    const girisler = kayit.filter((k) => k.tur === 'giris' && k.cikis >= kopus);
+    const disaridaKalan = kayit.filter((k) => k.tur === 'mola' && k.cikis < kopus && k.donus > kopus).length;
+    assert.equal(girisler.length + disaridaKalan, 6, 'kopan her PC bir kez girdi (tohum ' + tohum + ')');
+    const sirasi = girisler.map((k) => Number(k.hwid.slice(2)));
+    assert.deepEqual(sirasi, [...sirasi].sort((a, b) => a - b), 'girisler PC sirasiyla');
+    cakismaYok(kayit);
+    const sonGiris = girisler[girisler.length - 1].donus;
+    for (const k of kayit.filter((x) => x.tur === 'mola')) {
+      // kopmadan ONCE baslamis mola serbest; kopmadan sonra baslayan mola
+      // ancak tum girisler bittikten sonra olabilir
+      assert.ok(k.cikis < kopus || k.cikis >= sonGiris, 'girisler bitmeden kimse molaya cikmadi');
+    }
+  }
 });
 
 test('SIMULASYON: gece reset - her PC bir kez, sirayla, 5 dk arayla, molalar reset bitince', () => {

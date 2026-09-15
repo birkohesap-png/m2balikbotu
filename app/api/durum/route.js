@@ -34,6 +34,8 @@ export async function POST(req) {
         mola_hazir: !!s.mola_hazir,
         reset: !!s.reset,
         reset_hazir: !!s.reset_hazir,
+        giris: !!s.giris,
+        giris_hazir: !!s.giris_hazir,
       },
     };
 

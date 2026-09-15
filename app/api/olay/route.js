@@ -22,6 +22,7 @@ const BASLIK = {
   kanal: '🔄 <b>Kanal değişimi</b>',
   botcevap: '💬 <b>Bot cevap verdi</b>',
   altinton: '🏆 <b>Altın Ton alındı</b>',
+  metinreset: '🌙 <b>Metin+ reset</b>',
 };
 
 /**
