@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { sql, tablolariHazirla } from '@/lib/db';
 import { gonder, duzenle, cevapla, sureMetni } from '@/lib/telegram';
+import { adayYap, siraMetni } from '@/lib/sira';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -13,6 +14,7 @@ const YARDIM =
   'Komutlar:\n' +
   '<code>/baglan ANAHTAR</code> — lisansını bağla\n' +
   '/hesaplar — açık hesapları gör\n' +
+  '/sira — sıralı mola ve Metin+ reset sırası\n' +
   '/durum — lisans bilgin\n' +
   '/bildirim — özel mesaj bildirimini aç/kapat\n' +
   '/cikis — bağlantıyı kes\n' +
@@ -79,11 +81,14 @@ function tonDurum(h, slot) {
 function karakterListesi(h) {
   const ham = Array.isArray(h.karakterler) ? h.karakterler : [];
   const adet = Math.max(2, Math.min(5, h.kd_adet || ham.filter(Boolean).length || 0));
+  const bitenler = Array.isArray(h.solucan_biten) ? h.solucan_biten.map(Number) : [];
   return ham.slice(0, adet).map((ad, i) => ({
     slot: i + 1,
     ad: ad || 'Slot ' + (i + 1),
     aktif: i === (h.aktif_slot || 0),
     ton: tonDurum(h, i),
+    // (YENI) Bu karakterin solucani bitti mi? Telegram'da 🪱❌ ile gosterilir.
+    solucanBitti: bitenler.includes(i),
   }));
 }
 
@@ -98,6 +103,7 @@ function karakterMetni(h) {
   const liste = karakterListesi(h);
   const satir = liste.map(
     (k) => (k.aktif ? '\u{1F7E2}' : '\u{1F534}') + ' <b>' + k.slot + '. ' + k.ad + '</b>' +
+           (k.solucanBitti ? ' \u{1FAB1}❌' : '') +
            (k.aktif ? ' \u2014 şu an oynanıyor' : '') +
            (k.ton.alindi
              ? '\n     \u{1F3C6} Altın Ton alındı \u00b7 yenilenmesine ' + sureMetni(k.ton.kalan)
@@ -327,6 +333,15 @@ export async function POST(req) {
 
     if (komut === '/hesaplar') {
       await hesaplariYaz(chatId, bag.id);
+      return OK();
+    }
+
+    if (komut === '/sira') {
+      const { rows: s } = await sql`SELECT veri FROM siralar WHERE lisans_id = ${bag.id}`;
+      const { rows: dr } = await sql`
+        SELECT hwid, veri, EXTRACT(EPOCH FROM (NOW() - guncelleme)) AS yas
+          FROM durumlar WHERE lisans_id = ${bag.id} ORDER BY id ASC`;
+      await gonder(chatId, siraMetni(s[0] ? s[0].veri : {}, dr.map(adayYap), Date.now()));
       return OK();
     }
 
