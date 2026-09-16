@@ -2,11 +2,15 @@ import { NextResponse } from 'next/server';
 import { sql, tablolariHazirla } from '@/lib/db';
 import { gonder, duzenle, cevapla, sureMetni } from '@/lib/telegram';
 import { adayYap, siraMetni } from '@/lib/sira';
+import {
+  satirdanHesaplar, calismaSn, kdBilgi, karakterCallback, karakterCallbackCoz,
+} from '@/lib/hesap';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
 const OK = () => NextResponse.json({ ok: true });
+const kac = (t) => String(t || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 const CANLI_SN = 150; // son 2.5 dk icinde haber verdiyse "çevrimiçi"
 
 const YARDIM =
@@ -33,16 +37,9 @@ async function hesaplariTopla(lisansId) {
   const { rows } = await sql`
     SELECT id, hwid, veri, guncelleme FROM durumlar
      WHERE lisans_id = ${lisansId} ORDER BY id ASC`;
-  const liste = [];
-  for (const r of rows) {
-    const canli = (Date.now() - new Date(r.guncelleme).getTime()) / 1000 < CANLI_SN;
-    const v = r.veri || {};
-    (v.hesaplar || []).forEach((h, i) => {
-      const yas = Math.max(0, (Date.now() - new Date(r.guncelleme).getTime()) / 1000);
-      liste.push({ ...h, canli, yas, pc: v.pc || r.hwid.slice(0, 8), durumId: r.id, idx: i });
-    });
-  }
-  return liste;
+  // Ayni PC'nin eski (HWID'i degismis) kaydi gizlenir, bot saati sunucu saatine
+  // cevrilir - bkz. lib/hesap.js.
+  return satirdanHesaplar(rows, Date.now());
 }
 
 function hesapKlavye(liste) {
@@ -59,11 +56,11 @@ function hesapKlavye(liste) {
   };
 }
 
-/* Karakter degisimine kalan sure. kd_kalan durum GONDERILDIGI andaki degerdir;
-   aradan gecen sure (h.yas) dusulerek guncel degere cevrilir. */
-function kdKalan(h) {
-  if (!h.kd_acik || !h.kd_kalan) return null;
-  return Math.max(0, Math.round(h.kd_kalan - (h.yas || 0)));
+/* Karakter degisimine kalan: "12dk" ya da "7🐟" (20 balik modu). null = kapali. */
+function kdKisa(h) {
+  const k = kdBilgi(h);
+  if (!k) return null;
+  return k.mod === 'balik' ? k.kalan + '🐟' : sureMetni(k.kalan);
 }
 
 /* Altin Ton her karakterde 24 saatte bir tutulabilir. Slot icin:
@@ -93,10 +90,11 @@ function karakterListesi(h) {
 }
 
 function kdDurumMetni(h) {
-  const kalan = kdKalan(h);
   if (h.kd_degisiyor) return 'şu an değişiyor…';
-  if (kalan === null) return 'karakter değişimi kapalı';
-  return kalan > 0 ? sureMetni(kalan) : 'birazdan';
+  const k = kdBilgi(h);
+  if (!k) return 'karakter değişimi kapalı';
+  if (k.mod === 'balik') return k.kalan > 0 ? `${k.kalan} balık sonra` : 'birazdan';
+  return k.kalan > 0 ? sureMetni(k.kalan) : 'birazdan';
 }
 
 function karakterMetni(h) {
@@ -114,6 +112,7 @@ function karakterMetni(h) {
     (h.canli ? '\u{1F7E2} Çevrimiçi' : '\u26AA Çevrimdışı') + ' \u00B7 \u{1F4BB} ' + h.pc + '\n\n' +
     (satir.length ? satir.join('\n') : 'Karakter listesi henüz okunmadı.') +
     '\n\n\u{1F504} Sıradaki değişim: <b>' + kdDurumMetni(h) + '</b>' +
+    '\n\u{1F449} Karaktere dokun: bot o karaktere geçer' +
     (liste.length
       ? '\n\u{1F3C6} Günlük ton: ' + liste.filter((k) => k.ton.alindi).length + '/' + liste.length + '\n\u{1F4CB} Sıra: ' + liste.map((k) => k.ad).join(' \u2192 ') + ' \u2192 ' + liste[0].ad
       : '')
@@ -121,7 +120,7 @@ function karakterMetni(h) {
 }
 
 function karakterKlavye(h, geriData) {
-  const kalan = kdKalan(h);
+  const kisa = kdKisa(h);
   const liste = karakterListesi(h);
   return {
     inline_keyboard: [
@@ -130,8 +129,8 @@ function karakterKlavye(h, geriData) {
           text:
             (k.aktif ? '\u{1F7E2}' : '\u{1F534}') + ' ' + k.slot + '. ' + k.ad +
             (k.ton.alindi ? ' \u{1F3C6}' : '') +
-            (k.aktif && kalan !== null ? ' \u00B7 ' + sureMetni(kalan) : ''),
-          callback_data: 'ki:' + k.slot,
+            (k.aktif && kisa !== null ? ' \u00B7 ' + kisa : ''),
+          callback_data: karakterCallback(h.durumId, h.idx, k.slot),
         },
       ]),
       [
@@ -143,7 +142,8 @@ function karakterKlavye(h, geriData) {
 }
 
 function hesapMetni(h) {
-  const sure = h.baslangic ? sureMetni(Date.now() / 1000 - h.baslangic) : '—';
+  const csn = calismaSn(h, Date.now());
+  const sure = csn === null ? (h.calisiyor ? '—' : 'bot durdu') : sureMetni(csn);
   const toplam = (h.tutulan || 0) + (h.kacan || 0);
   const basari = toplam ? Math.round(((h.tutulan || 0) / toplam) * 100) : 0;
   return (
@@ -156,7 +156,7 @@ function hesapMetni(h) {
     `🎯 Başarı: <b>%${basari}</b>\n` +
     `⚙️ Durum: <b>${h.faz || '—'}</b>\n` +
     (h.karakter ? `🎭 Karakter: <b>${h.karakter}</b>\n` : '') +
-    (kdKalan(h) !== null
+    (kdBilgi(h) !== null
       ? `🔄 Karakter değişimi: <b>${kdDurumMetni(h)}</b>\n`
       : '') +
     `⏱ Çalışma: <b>${sure}</b>` +
@@ -219,8 +219,47 @@ export async function POST(req) {
         return OK();
       }
       if (q.data.startsWith('ki:')) {
-        // Karakter butonu bilgi amacli - buluttan karakter degistirilemez.
-        await cevapla(q.id, 'Karakter değişimi bot tarafında otomatik yapılır');
+        // (KULLANICI ISTEGI 16 Eyl 2026) Karaktere dokununca bot o karaktere
+        // gecer. Sunucu bota dogrudan ulasamaz: komut kaydedilir, bot bir sonraki
+        // durum gonderiminde (en gec ~30 sn) alir; 30 sn bekleyip karaktere girer.
+        const c = karakterCallbackCoz(q.data);
+        if (!c) {
+          await cevapla(q.id, 'Liste eski — 🔄 Yenile tuşuna bas');
+          return OK();
+        }
+        const liste = await hesaplariTopla(bag.id);
+        const h = liste.find((x) => x.durumId === c.durumId && x.idx === c.idx);
+        const k = h ? karakterListesi(h).find((x) => x.slot === c.slot) : null;
+        if (!h || !k) {
+          await cevapla(q.id, 'Hesap bulunamadı — listeyi yenile');
+          return OK();
+        }
+        if (!h.canli || !h.calisiyor) {
+          await cevapla(q.id, 'Bot çalışmıyor — önce botu başlat');
+          return OK();
+        }
+        if (k.aktif) {
+          await cevapla(q.id, 'Zaten bu karakterde');
+          return OK();
+        }
+        if (h.kd_degisiyor) {
+          await cevapla(q.id, 'Şu an karakter değişiyor, biraz sonra dene');
+          return OK();
+        }
+        await sql`
+          DELETE FROM komutlar
+           WHERE (lisans_id = ${bag.id} AND hwid = ${h.hwid} AND tur = 'karakter' AND teslim IS NULL)
+              OR olusturma < NOW() - INTERVAL '1 day'`;
+        await sql`
+          INSERT INTO komutlar (lisans_id, hwid, tur, veri)
+          VALUES (${bag.id}, ${h.hwid}, 'karakter', ${JSON.stringify({ slot: k.slot, ad: k.ad })}::jsonb)`;
+        await cevapla(q.id, '✅ ' + k.ad + ' seçildi');
+        await gonder(
+          chatId,
+          `🎭 <b>${kac(k.ad)}</b> karakterine geçiş istendi · 💻 ${kac(h.pc)}\n\n` +
+            'Bot en geç ~30 sn içinde komutu alır, balık tutmayı bırakıp 30 sn bekler, ' +
+            'karaktere girer ve kaldığı yerden devam eder.'
+        );
         return OK();
       }
       if (q.data.startsWith('k:')) {

@@ -23,6 +23,7 @@ const BASLIK = {
   botcevap: '💬 <b>Bot cevap verdi</b>',
   altinton: '🏆 <b>Altın Ton alındı</b>',
   metinreset: '🌙 <b>Metin+ reset</b>',
+  solucan: '🪱 <b>Solucan alma bitti</b>',
 };
 
 /**
