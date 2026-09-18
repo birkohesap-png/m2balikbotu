@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { sql, tablolariHazirla } from '@/lib/db';
 import { gonder, duzenle, cevapla, sureMetni } from '@/lib/telegram';
 import { adayYap, siraMetni } from '@/lib/sira';
+import { gmListesi, gmAyarliMi } from '@/lib/gm';
 import {
   satirdanHesaplar, calismaSn, kdBilgi, karakterCallback, karakterCallbackCoz,
 } from '@/lib/hesap';
@@ -19,6 +20,7 @@ const YARDIM =
   '<code>/baglan ANAHTAR</code> — lisansını bağla\n' +
   '/hesaplar — açık hesapları gör\n' +
   '/sira — sıralı mola ve Metin+ reset sırası\n' +
+  '/gm — Discord GM durumu (aktif/kapalı)\n' +
   '/durum — lisans bilgin\n' +
   '/bildirim — özel mesaj bildirimini aç/kapat\n' +
   '/cikis — bağlantıyı kes\n' +
@@ -218,6 +220,37 @@ export async function POST(req) {
         await cevapla(q.id);
         return OK();
       }
+      if (q.data.startsWith('gmkapat:')) {
+        // GM uyarisindaki butona basildi. Musterinin bu lisanstaki TUM
+        // bilgisayarlarina "kapat" komutu birakilir; bot ~30 sn icinde alir ve
+        // mod'a gore ya PC'yi kapatir ya da sadece oyunu kapatir.
+        const mod = q.data.split(':')[1] === 'pc' ? 'pc' : 'oyun';
+        const { rows: cihazlar } = await sql`
+          SELECT DISTINCT hwid FROM durumlar WHERE lisans_id = ${bag.id}`;
+        if (!cihazlar.length) {
+          await cevapla(q.id, 'Kayıtlı bilgisayar bulunamadı');
+          return OK();
+        }
+        for (const c of cihazlar) {
+          await sql`
+            DELETE FROM komutlar
+             WHERE lisans_id = ${bag.id} AND hwid = ${c.hwid}
+               AND tur = 'kapat' AND teslim IS NULL`;
+          await sql`
+            INSERT INTO komutlar (lisans_id, hwid, tur, veri)
+            VALUES (${bag.id}, ${c.hwid}, 'kapat', ${JSON.stringify({ mod })}::jsonb)`;
+        }
+        const etiket = mod === 'pc' ? 'Bilgisayar kapatılıyor' : 'Oyun kapatılıyor';
+        await cevapla(q.id, '✅ ' + etiket);
+        await gonder(
+          chatId,
+          (mod === 'pc' ? '🖥 <b>Bilgisayar kapatma' : '❌ <b>Oyun kapatma') +
+            ` komutu gönderildi</b>\n\nKayıtlı ${cihazlar.length} bilgisayara iletildi. ` +
+            'Bot en geç ~30 sn içinde uygular' +
+            (mod === 'pc' ? '. PC kapanmazsa oyun kapatılır.' : '.')
+        );
+        return OK();
+      }
       if (q.data.startsWith('ki:')) {
         // (KULLANICI ISTEGI 16 Eyl 2026) Karaktere dokununca bot o karaktere
         // gecer. Sunucu bota dogrudan ulasamaz: komut kaydedilir, bot bir sonraki
@@ -405,6 +438,35 @@ export async function POST(req) {
         UPDATE tg_baglar SET bildirim = NOT bildirim
          WHERE chat_id = ${chatId} RETURNING bildirim`;
       await gonder(chatId, rows[0].bildirim ? '🔔 Bildirimler açıldı.' : '🔕 Bildirimler kapatıldı.');
+      return OK();
+    }
+
+    if (komut === '/gm') {
+      if (!gmAyarliMi()) {
+        await gonder(chatId, '🛡 <b>GM Nöbeti</b>\n\nHenüz ayarlı değil.');
+        return OK();
+      }
+      const liste = gmListesi();
+      const { rows: gd } = await sql`SELECT aktif, son_tarama FROM gm_durum WHERE id = 1`;
+      const aktifSet = new Set(
+        (gd[0] && Array.isArray(gd[0].aktif) ? gd[0].aktif : []).map((a) => String(a).toLowerCase())
+      );
+      const satirlar = liste.map((g) => {
+        const acik = aktifSet.has(g.ad.toLowerCase());
+        const im = acik ? (g.risk === 'yuksek' ? '🔴' : '🟡') : '⚪';
+        const durum = acik
+          ? (g.risk === 'yuksek' ? 'AKTİF (yüksek risk)' : 'aktif (düşük risk)')
+          : 'kapalı';
+        return `${im} <b>${kac(g.ad)}</b> — ${durum}`;
+      });
+      let alt = '';
+      if (gd[0] && gd[0].son_tarama) {
+        const yasSn = Math.max(0, Math.floor((Date.now() - new Date(gd[0].son_tarama).getTime()) / 1000));
+        alt = `\n\n🕐 Son kontrol: ${yasSn < 90 ? 'az önce' : sureMetni(yasSn) + ' önce'}`;
+      } else {
+        alt = '\n\n<i>Henüz kontrol yapılmadı.</i>';
+      }
+      await gonder(chatId, '🛡 <b>GM Nöbeti</b>\n\n' + satirlar.join('\n') + alt);
       return OK();
     }
 

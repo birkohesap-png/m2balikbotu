@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { sql, tablolariHazirla } from '@/lib/db';
 import { lisansDogrula } from '@/lib/telegram';
+import { limitHesapla } from '@/lib/limit';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -60,6 +61,42 @@ export async function POST(req) {
       ON CONFLICT (lisans_id, hwid)
       DO UPDATE SET veri = EXCLUDED.veri, guncelleme = NOW()`;
 
+    // --- Gunluk calisma limiti (16 saat aktif -> 8 saat dinlenme) ---
+    // Key'e bagli, admin ayarlar. Sayac SUNUCUDA (kullanim tablosu) tutulur;
+    // bot kapatilip acilinca sifirlanmaz.
+    let limit = { aktif: false };
+    try {
+      const limitSaat = Number(l.gunluk_limit_saat);
+      const { rows: kr } = await sql`
+        SELECT donem_sn, dinlenme_bitis, guncelleme FROM kullanim
+         WHERE lisans_id = ${l.id} AND hwid = ${hwid}`;
+      const onceki = kr[0];
+      const h = limitHesapla({
+        donemSn: onceki ? onceki.donem_sn : 0,
+        dinlenmeBitisMs: onceki && onceki.dinlenme_bitis ? new Date(onceki.dinlenme_bitis).getTime() : 0,
+        guncellemeMs: onceki && onceki.guncelleme ? new Date(onceki.guncelleme).getTime() : 0,
+        calisiyor: !!(g.bot && g.bot.calisiyor),
+        nowMs: Date.now(),
+        limitSaat: Number.isFinite(limitSaat) ? limitSaat : 16,
+      });
+      const dbBitis = h.dinlenmeBitisMs ? new Date(h.dinlenmeBitisMs).toISOString() : null;
+      await sql`
+        INSERT INTO kullanim (lisans_id, hwid, donem_sn, dinlenme_bitis, guncelleme)
+        VALUES (${l.id}, ${hwid}, ${h.donemSn}, ${dbBitis}, NOW())
+        ON CONFLICT (lisans_id, hwid)
+        DO UPDATE SET donem_sn = ${h.donemSn}, dinlenme_bitis = ${dbBitis}, guncelleme = NOW()`;
+      limit = {
+        aktif: h.aktif,
+        dinlen: h.dinlen,
+        gunluk_sn: h.gunlukSn,
+        limit_sn: h.limitSn,
+        kalan_sn: h.kalanSn,
+        dinlenme_kalan_sn: h.dinlenmeKalanSn,
+      };
+    } catch {
+      limit = { aktif: false }; // limit hatasi durum gonderimini bozmasin
+    }
+
     const { rows: komutlar } = await sql`
       SELECT id, tur, veri FROM komutlar
        WHERE lisans_id = ${l.id} AND hwid = ${hwid} AND teslim IS NULL
@@ -72,6 +109,7 @@ export async function POST(req) {
     return NextResponse.json({
       ok: true,
       komutlar: komutlar.map((k) => ({ id: k.id, tur: k.tur, veri: k.veri || {} })),
+      limit,
     });
   } catch (e) {
     return NextResponse.json({ ok: false, mesaj: String(e.message || e) }, { status: 500 });

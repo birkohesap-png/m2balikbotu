@@ -13,8 +13,13 @@ export async function GET(req, { params }) {
   await tablolariHazirla();
   const { id } = await params;
   const { rows } = await sql`SELECT * FROM lisanslar WHERE id = ${id}`;
+  // Cihazlar + gunluk limit sayaci (kullanim). donem_sn: bu donemde birikmis
+  // aktif saniye; dinlenme_bitis: doluysa 8 saatlik dinlenme bitis ani.
   const { rows: cihazlar } = await sql`
-    SELECT * FROM cihazlar WHERE lisans_id = ${id} ORDER BY ilk ASC`;
+    SELECT c.*, k.donem_sn, k.dinlenme_bitis
+      FROM cihazlar c
+      LEFT JOIN kullanim k ON k.lisans_id = c.lisans_id AND k.hwid = c.hwid
+     WHERE c.lisans_id = ${id} ORDER BY c.ilk ASC`;
   return NextResponse.json({ ok: true, lisans: rows[0] || null, cihazlar });
 }
 
@@ -55,13 +60,25 @@ export async function PATCH(req, { params }) {
       break;
     case 'duzenle': {
       const cihaz = Math.max(1, Math.min(64, parseInt(g.max_cihaz, 10) || 1));
+      // Gunluk limit (saat). 0 = kapali/sinirsiz. Bos gelirse 16.
+      const limit = Math.max(0, Math.min(24, parseInt(g.gunluk_limit_saat, 10)));
       await sql`
         UPDATE lisanslar
            SET musteri = ${String(g.musteri || '').slice(0, 120)},
-               max_cihaz = ${cihaz}
+               max_cihaz = ${cihaz},
+               gunluk_limit_saat = ${Number.isFinite(limit) ? limit : 16}
          WHERE id = ${id}`;
       break;
     }
+    case 'limitSifirla':
+      // Gunluk sayaci sifirla (dinlenmeyi de kaldirir). Belirli bir cihaz icin
+      // hwid gelirse sadece onu, gelmezse key'in tum cihazlarini sifirlar.
+      if (g.hwid) {
+        await sql`DELETE FROM kullanim WHERE lisans_id = ${id} AND hwid = ${String(g.hwid)}`;
+      } else {
+        await sql`DELETE FROM kullanim WHERE lisans_id = ${id}`;
+      }
+      break;
     default:
       return NextResponse.json({ ok: false, mesaj: 'Bilinmeyen işlem' }, { status: 400 });
   }

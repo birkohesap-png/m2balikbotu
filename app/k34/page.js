@@ -24,6 +24,29 @@ function kalanMetin(l) {
   return { yazi: g > 0 ? `${g}g ${s}sa` : s > 0 ? `${s}sa ${d}dk` : `${d}dk`, renk: 'var(--yesil)' };
 }
 
+/** Saniyeyi "5sa 12dk" gibi gosterir. */
+function sureKisa(sn) {
+  sn = Math.max(0, Math.floor(sn || 0));
+  const s = Math.floor(sn / 3600);
+  const d = Math.floor((sn % 3600) / 60);
+  return s > 0 ? `${s}sa ${d}dk` : `${d}dk`;
+}
+
+/** Bir cihazin gunluk limit durumu (calisma / dinlenme). */
+function limitDurum(c, limitSaat) {
+  if (!limitSaat || limitSaat <= 0) return { yazi: 'sınırsız', renk: 'var(--gri2)' };
+  const bitis = c.dinlenme_bitis ? new Date(c.dinlenme_bitis).getTime() : 0;
+  const kalanDinlenme = bitis ? Math.floor((bitis - Date.now()) / 1000) : 0;
+  if (kalanDinlenme > 0) {
+    return { yazi: `😴 dinlenme ${sureKisa(kalanDinlenme)} kaldı`, renk: 'var(--kirmizi)' };
+  }
+  const kullanilan = c.donem_sn || 0;
+  return {
+    yazi: `${sureKisa(kullanilan)} / ${limitSaat}sa`,
+    renk: kullanilan >= limitSaat * 3600 ? 'var(--kirmizi)' : 'var(--yesil)',
+  };
+}
+
 export default function Admin() {
   const [girisli, setGirisli] = useState(false);
   const [sifre, setSifre] = useState('');
@@ -35,6 +58,7 @@ export default function Admin() {
   const [uretilen, setUretilen] = useState([]);
   const [acik, setAcik] = useState(null);
   const [cihazlar, setCihazlar] = useState([]);
+  const [limitDeger, setLimitDeger] = useState(16);
   const [mesaj, setMesaj] = useState('');
 
   const yukle = useCallback(async (q = '') => {
@@ -118,6 +142,7 @@ export default function Admin() {
     const d = await r.json();
     if (d.ok) {
       setCihazlar(d.cihazlar);
+      setLimitDeger(d.lisans && d.lisans.gunluk_limit_saat != null ? d.lisans.gunluk_limit_saat : 16);
       setAcik(id);
     }
   }
@@ -351,11 +376,25 @@ export default function Admin() {
                             {cihazlar.length === 0 && (
                               <div style={{ color: 'var(--gri2)', fontSize: 12.5 }}>Henüz hiçbir bilgisayarda açılmamış.</div>
                             )}
-                            {cihazlar.map((c) => (
+                            {cihazlar.map((c) => {
+                              const ld = limitDurum(c, l.gunluk_limit_saat);
+                              return (
                               <div key={c.id} style={S.cihaz}>
                                 <code style={{ fontSize: 11.5, color: 'var(--altin2)' }}>{c.hwid}</code>
                                 <span style={{ fontSize: 11.5, color: 'var(--gri2)' }}>ilk: {tarih(c.ilk)}</span>
                                 <span style={{ fontSize: 11.5, color: 'var(--gri2)' }}>son: {tarih(c.son)}</span>
+                                <span style={{ fontSize: 11.5, color: ld.renk, fontWeight: 600 }} title="Günlük çalışma">
+                                  ⏱ {ld.yazi}
+                                </span>
+                                {c.donem_sn != null && (
+                                  <button
+                                    onClick={() => islem(l.id, { islem: 'limitSifirla', hwid: c.hwid })}
+                                    style={S.mini}
+                                    title="Bu bilgisayarın günlük sayacını sıfırla"
+                                  >
+                                    Sayacı sıfırla
+                                  </button>
+                                )}
                                 <button
                                   onClick={() => islem(l.id, { islem: 'cihazSil', hwid: c.hwid })}
                                   style={{ ...S.mini, ...S.miniKirmizi, marginLeft: 'auto' }}
@@ -363,8 +402,38 @@ export default function Admin() {
                                   Kaldır
                                 </button>
                               </div>
-                            ))}
-                            <div style={{ display: 'flex', gap: 8, marginTop: 14, flexWrap: 'wrap' }}>
+                              );
+                            })}
+                            <div style={{
+                              display: 'flex', gap: 8, marginTop: 14, flexWrap: 'wrap', alignItems: 'center',
+                              paddingTop: 12, borderTop: '1px solid var(--cizgi, #333)',
+                            }}>
+                              <span style={{ fontSize: 12.5, color: 'var(--gri)' }}>
+                                <b>Günlük limit:</b>
+                              </span>
+                              <input
+                                type="number" min="0" max="24"
+                                value={limitDeger}
+                                onChange={(e) => setLimitDeger(e.target.value)}
+                                style={{ ...S.input, width: 64, padding: '4px 8px', margin: 0 }}
+                              />
+                              <span style={{ fontSize: 12, color: 'var(--gri2)' }}>saat (0 = kapalı/sınırsız)</span>
+                              <button
+                                onClick={() => islem(l.id, {
+                                  islem: 'duzenle',
+                                  musteri: l.musteri || '',
+                                  max_cihaz: l.max_cihaz,
+                                  gunluk_limit_saat: limitDeger,
+                                })}
+                                style={S.mini}
+                              >
+                                Limiti kaydet
+                              </button>
+                              <button onClick={() => islem(l.id, { islem: 'limitSifirla' })} style={S.mini}>
+                                Tüm sayaçları sıfırla
+                              </button>
+                            </div>
+                            <div style={{ display: 'flex', gap: 8, marginTop: 10, flexWrap: 'wrap' }}>
                               <button onClick={() => islem(l.id, { islem: 'cihazSifirla' })} style={S.mini}>
                                 Tüm cihazları sıfırla
                               </button>

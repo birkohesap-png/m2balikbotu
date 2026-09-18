@@ -110,6 +110,9 @@ export async function POST(req) {
       bitis: bitisEpoch,
       jeton: lisansJetonu(anahtar, hwid, bitisEpoch),
       vk: process.env.K34_VARLIK_ANAHTARI || undefined,
+      // Gunluk calisma limiti (saat). 0 = kapali. Bot acilis uyarisinda kullanir;
+      // asil sayac /api/durum'da tutulur.
+      gunluk_limit: Number.isFinite(Number(l.gunluk_limit_saat)) ? Number(l.gunluk_limit_saat) : 16,
     });
   } catch (e) {
     return yanit({ ok: false, sebep: 'hata', mesaj: String(e.message || e) }, 500);

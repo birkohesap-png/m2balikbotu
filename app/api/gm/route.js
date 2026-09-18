@@ -1,0 +1,115 @@
+import { NextResponse } from 'next/server';
+import { sql, tablolariHazirla } from '@/lib/db';
+import { tumMusterilereBildir } from '@/lib/telegram';
+import { gatewayGmTara, gmAyarliMi, gmIsimleri, gmRisk } from '@/lib/gm';
+
+export const runtime = 'nodejs';
+export const dynamic = 'force-dynamic';
+export const maxDuration = 30;
+
+const kac = (t) =>
+  String(t || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+
+/** GM uyarisinin altindaki iki buton (musteri PC kapat / sadece oyun kapat secer). */
+function kapatKlavye() {
+  return {
+    inline_keyboard: [[
+      { text: '🖥 PC\'yi kapat', callback_data: 'gmkapat:pc' },
+      { text: '❌ Sadece oyunu kapat', callback_data: 'gmkapat:oyun' },
+    ]],
+  };
+}
+
+function gizliMi(req) {
+  const beklenen = process.env.GM_TARA_GIZLI;
+  if (!beklenen) return false; // ayar yoksa uc kapali
+  const u = new URL(req.url);
+  const gelen =
+    req.headers.get('x-gm-gizli') || u.searchParams.get('anahtar') || '';
+  return gelen === beklenen;
+}
+
+/**
+ * Zamanlayici (cron-job.org vb.) bu ucu ~30 sn'de bir gizli anahtarla durter.
+ * Discord'da GM cevrimici mi diye bakar; YENI cevrimici olan GM varsa tum
+ * musterilere Telegram'dan uyari + "oyunu kapat" butonlari dusurur.
+ *
+ * GET/POST /api/gm?anahtar=GIZLI   (veya  x-gm-gizli basligiyla)
+ */
+async function calis(req) {
+  if (!gizliMi(req)) {
+    return NextResponse.json({ ok: false }, { status: 401 });
+  }
+  if (!gmAyarliMi()) {
+    return NextResponse.json(
+      { ok: false, sebep: 'ayarsiz', ipucu: 'DISCORD_TOKEN, DISCORD_GUILD, GM_ISIMLER gerekli' },
+      { status: 200 }
+    );
+  }
+
+  await tablolariHazirla();
+
+  const { aktif, hata } = await gatewayGmTara();
+  const simdi = new Set(aktif);
+
+  // Onceki tarama durumu (debounce): sadece YENI cevrimici olanlar icin uyar.
+  await sql`INSERT INTO gm_durum (id) VALUES (1) ON CONFLICT (id) DO NOTHING`;
+  const { rows } = await sql`SELECT aktif FROM gm_durum WHERE id = 1`;
+  const onceki = new Set(Array.isArray(rows[0]?.aktif) ? rows[0].aktif : []);
+
+  const yeni = [...simdi].filter((ad) => !onceki.has(ad));
+
+  let gonderilen = 0;
+  if (yeni.length) {
+    // Her yeni aktif GM'i risk seviyesine gore ayir (yuksek/dusuk).
+    const yuksek = yeni.filter((a) => gmRisk(a) === 'yuksek');
+    const dusuk = yeni.filter((a) => gmRisk(a) !== 'yuksek');
+    const satirlar = [
+      ...yuksek.map((a) => '🔴 <b>' + kac(a) + '</b> — YÜKSEK RİSK'),
+      ...dusuk.map((a) => '🟡 <b>' + kac(a) + '</b> — düşük risk'),
+    ].join('\n');
+
+    let metin;
+    if (yuksek.length) {
+      // En az bir yuksek riskli GM aktif -> sert uyari.
+      metin =
+        '⚠️ <b>GM AKTİF — YÜKSEK RİSK!</b>\n\n' +
+        'Şu an Discord\'da aktif oyun yöneticisi (GM):\n' + satirlar + '\n\n' +
+        'Ban riski <b>yüksek</b>. Lütfen oyunu HEMEN kapatın. Aşağıdaki butonla ' +
+        'bilgisayarınızı ya da sadece oyunu kapatabilirsiniz.';
+    } else {
+      // Sadece dusuk riskli GM(ler) -> daha yumusak uyari.
+      metin =
+        '🟡 <b>GM aktif (düşük risk)</b>\n\n' +
+        'Şu an Discord\'da aktif GM:\n' + satirlar + '\n\n' +
+        'Ban riski düşük ama dikkatli olun. İstersen aşağıdaki butonla oyunu ' +
+        'veya bilgisayarını kapatabilirsin.';
+    }
+    gonderilen = await tumMusterilereBildir(metin, kapatKlavye());
+  }
+
+  // Durumu guncelle. Hata olduysa (baglanti kurulamadi) onceki durumu KORU ki
+  // gecici bir hata "GM cikti" gibi algilanip sonra tekrar uyari yagdirmasin.
+  if (!hata) {
+    await sql`
+      UPDATE gm_durum
+         SET aktif = ${JSON.stringify([...simdi])}::jsonb,
+             son_tarama = NOW(),
+             son_bildirim = ${yeni.length ? new Date().toISOString() : null}
+       WHERE id = 1`;
+  } else {
+    await sql`UPDATE gm_durum SET son_tarama = NOW() WHERE id = 1`;
+  }
+
+  return NextResponse.json({
+    ok: true,
+    aktif: [...simdi],
+    yeni,
+    gonderilen,
+    izlenen: gmIsimleri().length,
+    ...(hata ? { hata } : {}),
+  });
+}
+
+export const GET = calis;
+export const POST = calis;
