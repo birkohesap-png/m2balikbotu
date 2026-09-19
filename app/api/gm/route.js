@@ -61,6 +61,9 @@ async function calis(req) {
   const onceki = new Set(Array.isArray(rows[0]?.aktif) ? rows[0].aktif : []);
 
   const yeni = [...simdi].filter((ad) => !onceki.has(ad));
+  // GM cikisi: onceki taramada aktifti, artik degil. SADECE basarili taramada
+  // (hata varsa simdi bos gelir, yanlis "cikti" bildirimi gitmesin).
+  const cikan = hata ? [] : [...onceki].filter((ad) => !simdi.has(ad));
 
   let gonderilen = 0;
   if (yeni.length && !debugIstendi) {
@@ -89,6 +92,15 @@ async function calis(req) {
         'veya bilgisayarını kapatabilirsin.';
     }
     gonderilen = await tumMusterilereBildir(metin, kapatKlavye());
+  }
+
+  // GM cikinca "guvenli" bildirimi (buton yok).
+  if (cikan.length && !debugIstendi) {
+    const isimler = cikan.map((a) => '⚪ <b>' + kac(gmGorunen(a)) + '</b>').join('\n');
+    const metin =
+      '✅ <b>GM çıkış yaptı</b>\n\n' + isimler + '\n\n' +
+      'Artık çevrimdışı — tehlike geçti. İstersen oyuna devam edebilirsin. 🎣';
+    await tumMusterilereBildir(metin);
   }
 
   // debug=1 KURU MOD: bildirim atmaz, kayit degistirmez (test icin guvenli).
