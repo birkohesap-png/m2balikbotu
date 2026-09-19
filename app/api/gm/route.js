@@ -49,9 +49,11 @@ async function calis(req) {
 
   await tablolariHazirla();
 
-  const { aktif, hata, debug } = await gatewayGmTara();
+  const sp = new URL(req.url).searchParams;
+  const debugIstendi = sp.get('debug') === '1';
+  const ara = String(sp.get('ara') || '').slice(0, 40);
+  const { aktif, hata, debug } = await gatewayGmTara({ ara: debugIstendi ? ara : '' });
   const simdi = new Set(aktif);
-  const debugIstendi = new URL(req.url).searchParams.get('debug') === '1';
 
   // Onceki tarama durumu (debounce): sadece YENI cevrimici olanlar icin uyar.
   await sql`INSERT INTO gm_durum (id) VALUES (1) ON CONFLICT (id) DO NOTHING`;
