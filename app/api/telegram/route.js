@@ -442,8 +442,11 @@ export async function POST(req) {
       return OK();
     }
 
-    const bag = await bagliLisans(chatId);
-    if (!bag) {
+    // /gm ve /ekranresmi kendi lisans kontrolunu KISININ kimligiyle yapar
+    // (grupta calissin diye) - genel "sohbete bagli lisans" kapisindan muaf.
+    const kisiselKomut = komut === '/gm' || komut === '/ekranresmi' || komut === '/ekran';
+    const bag = kisiselKomut ? null : await bagliLisans(chatId);
+    if (!bag && !kisiselKomut) {
       await gonder(chatId, 'Önce lisansını bağla:\n<code>/baglan K34-XXXXX-XXXXX-XXXXX</code>');
       return OK();
     }
