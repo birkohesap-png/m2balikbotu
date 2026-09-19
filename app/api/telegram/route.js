@@ -22,6 +22,7 @@ const YARDIM =
   '/sira — sıralı mola ve Metin+ reset sırası\n' +
   '/gm — GM (yetkili) durumu (aktif/kapalı)\n' +
   '/ekranresmi — bir PC\'nin anlık ekran görüntüsü\n' +
+  '/pckapat — bir PC\'yi uzaktan kapat\n' +
   '/durum — lisans bilgin\n' +
   '/bildirim — özel mesaj bildirimini aç/kapat\n' +
   '/cikis — bağlantıyı kes\n' +
@@ -250,6 +251,27 @@ export async function POST(req) {
         return OK();
       }
 
+      // Uzaktan PC kapat (grupta da calisir - basan kisinin lisansiyla).
+      if (q.data && q.data.startsWith('pck:')) {
+        const lis = await lisansliMi(q.from && q.from.id);
+        if (!lis) { await cevapla(q.id, 'Lisans gerekli'); return OK(); }
+        const { rows } = await sql`
+          SELECT hwid, veri FROM durumlar WHERE id = ${q.data.slice(4)} AND lisans_id = ${lis.id}`;
+        const c = rows[0];
+        if (!c) { await cevapla(q.id, 'Bilgisayar bulunamadı'); return OK(); }
+        await sql`
+          DELETE FROM komutlar WHERE lisans_id = ${lis.id} AND hwid = ${c.hwid}
+             AND tur = 'kapat' AND teslim IS NULL`;
+        await sql`
+          INSERT INTO komutlar (lisans_id, hwid, tur, veri)
+          VALUES (${lis.id}, ${c.hwid}, 'kapat', ${JSON.stringify({ mod: 'pc' })}::jsonb)`;
+        await cevapla(q.id, '🖥 Kapatılıyor');
+        await gonder(q.from.id,
+          '🖥 <b>' + kac((c.veri && c.veri.pc) || c.hwid.slice(0, 8)) + '</b> kapatma komutu gönderildi.\n\n' +
+          'Bot en geç ~30 sn içinde uygular. PC kapanmazsa oyun kapatılır.');
+        return OK();
+      }
+
       const bag = await bagliLisans(chatId);
       if (!bag) {
         await cevapla(q.id, 'Önce lisansını bağla');
@@ -386,6 +408,12 @@ export async function POST(req) {
     const metin = m.text.trim();
     const komut = metin.split(/\s+/)[0].toLowerCase().replace(/@.*$/, '');
 
+    // GRUPTA SADECE /gm calisir - diger tum komut ve mesajlara sessiz kal
+    // (PC listesi, lisans, ekran vb. gruba sizmasin; grup kirlenmesin).
+    if ((m.chat.type === 'group' || m.chat.type === 'supergroup') && komut !== '/gm') {
+      return OK();
+    }
+
     if (komut === '/start' || komut === '/yardim' || komut === '/help') {
       const bag = await bagliLisans(chatId);
       await gonder(
@@ -444,7 +472,8 @@ export async function POST(req) {
 
     // /gm ve /ekranresmi kendi lisans kontrolunu KISININ kimligiyle yapar
     // (grupta calissin diye) - genel "sohbete bagli lisans" kapisindan muaf.
-    const kisiselKomut = komut === '/gm' || komut === '/ekranresmi' || komut === '/ekran';
+    const kisiselKomut = komut === '/gm' || komut === '/ekranresmi' || komut === '/ekran'
+      || komut === '/pckapat';
     const bag = kisiselKomut ? null : await bagliLisans(chatId);
     if (!bag && !kisiselKomut) {
       await gonder(chatId, 'Önce lisansını bağla:\n<code>/baglan K34-XXXXX-XXXXX-XXXXX</code>');
@@ -579,6 +608,38 @@ export async function POST(req) {
       });
       await gonder(chatId, '📸 <b>Ekran Görüntüsü</b>\n\nHangi bilgisayarın ekranını görmek istersin?',
                    { inline_keyboard: kb });
+      return OK();
+    }
+
+    if (komut === '/pckapat') {
+      // GRUPTA CALISMAZ: PC listesi/kapatma herkese sizmasin.
+      if (m.chat.type === 'group' || m.chat.type === 'supergroup') {
+        await cagir('sendMessage', {
+          chat_id: chatId,
+          text: '🖥 PC kapatma komutu güvenlik için sadece <b>özelden</b> çalışır. ' +
+            'Bana özelden yaz: <code>/pckapat</code>',
+          parse_mode: 'HTML',
+          reply_to_message_id: m.message_id,
+        });
+        return OK();
+      }
+      const lis = await lisansliMi(m.from && m.from.id);
+      if (!lis) { await gonder(chatId, SATIN_AL); return OK(); }
+      const { rows: cih } = await sql`
+        SELECT id, hwid, veri, EXTRACT(EPOCH FROM (NOW() - guncelleme)) AS yas
+          FROM durumlar WHERE lisans_id = ${lis.id} ORDER BY id ASC`;
+      if (!cih.length) {
+        await gonder(chatId, '🖥 <b>PC Kapat</b>\n\nKayıtlı bilgisayar yok.');
+        return OK();
+      }
+      const kb = cih.map((c) => {
+        const ad = (c.veri && c.veri.pc) ? String(c.veri.pc) : c.hwid.slice(0, 8);
+        const cevrimici = Number(c.yas) < CANLI_SN;
+        return [{ text: (cevrimici ? '🟢 ' : '⚪ ') + '🖥 ' + ad, callback_data: 'pck:' + c.id }];
+      });
+      await gonder(chatId,
+        '🖥 <b>Uzaktan PC Kapat</b>\n\n⚠️ Seçtiğin bilgisayar ~30 sn içinde <b>kapanır</b>.\n' +
+        'Hangisini kapatmak istersin?', { inline_keyboard: kb });
       return OK();
     }
 
