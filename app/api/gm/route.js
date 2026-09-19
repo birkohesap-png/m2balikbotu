@@ -61,7 +61,7 @@ async function calis(req) {
   const yeni = [...simdi].filter((ad) => !onceki.has(ad));
 
   let gonderilen = 0;
-  if (yeni.length) {
+  if (yeni.length && !debugIstendi) {
     // Her yeni aktif GM'i risk seviyesine gore ayir (yuksek/dusuk).
     const yuksek = yeni.filter((a) => gmRisk(a) === 'yuksek');
     const dusuk = yeni.filter((a) => gmRisk(a) !== 'yuksek');
@@ -89,17 +89,20 @@ async function calis(req) {
     gonderilen = await tumMusterilereBildir(metin, kapatKlavye());
   }
 
-  // Durumu guncelle. Hata olduysa (baglanti kurulamadi) onceki durumu KORU ki
-  // gecici bir hata "GM cikti" gibi algilanip sonra tekrar uyari yagdirmasin.
-  if (!hata) {
-    await sql`
-      UPDATE gm_durum
-         SET aktif = ${JSON.stringify([...simdi])}::jsonb,
-             son_tarama = NOW(),
-             son_bildirim = ${yeni.length ? new Date().toISOString() : null}
-       WHERE id = 1`;
-  } else {
-    await sql`UPDATE gm_durum SET son_tarama = NOW() WHERE id = 1`;
+  // debug=1 KURU MOD: bildirim atmaz, kayit degistirmez (test icin guvenli).
+  if (!debugIstendi) {
+    // Durumu guncelle. Hata olduysa (baglanti kurulamadi) onceki durumu KORU ki
+    // gecici bir hata "GM cikti" gibi algilanip sonra tekrar uyari yagdirmasin.
+    if (!hata) {
+      await sql`
+        UPDATE gm_durum
+           SET aktif = ${JSON.stringify([...simdi])}::jsonb,
+               son_tarama = NOW(),
+               son_bildirim = ${yeni.length ? new Date().toISOString() : null}
+         WHERE id = 1`;
+    } else {
+      await sql`UPDATE gm_durum SET son_tarama = NOW() WHERE id = 1`;
+    }
   }
 
   return NextResponse.json({
