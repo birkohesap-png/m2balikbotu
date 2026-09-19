@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { sql, tablolariHazirla } from '@/lib/db';
-import { gonder, duzenle, cevapla, sureMetni } from '@/lib/telegram';
+import { gonder, duzenle, cevapla, sureMetni, cagir } from '@/lib/telegram';
 import { adayYap, siraMetni } from '@/lib/sira';
 import { gmListesi, gmAyarliMi } from '@/lib/gm';
 import {
@@ -20,7 +20,7 @@ const YARDIM =
   '<code>/baglan ANAHTAR</code> — lisansını bağla\n' +
   '/hesaplar — açık hesapları gör\n' +
   '/sira — sıralı mola ve Metin+ reset sırası\n' +
-  '/gm — Discord GM durumu (aktif/kapalı)\n' +
+  '/gm — GM (yetkili) durumu (aktif/kapalı)\n' +
   '/ekranresmi — bir PC\'nin anlık ekran görüntüsü\n' +
   '/durum — lisans bilgin\n' +
   '/bildirim — özel mesaj bildirimini aç/kapat\n' +
@@ -513,7 +513,7 @@ export async function POST(req) {
         const durum = acik
           ? (g.risk === 'yuksek' ? 'AKTİF (yüksek risk)' : 'aktif (düşük risk)')
           : 'kapalı';
-        return `${im} <b>${kac(g.ad)}</b> — ${durum}`;
+        return `${im} <b>${kac(g.gorunen)}</b> — ${durum}`;
       });
       let alt = '';
       if (gd[0] && gd[0].son_tarama) {
@@ -524,12 +524,26 @@ export async function POST(req) {
       }
       const metinGM = '🛡 <b>GM Nöbeti</b>\n\n' + satirlar.join('\n') + alt;
       if (grup) {
-        // Lisansli + grup: SADECE o kisiye ozelden gonder (grup kirlenmesin).
+        // Lisansli + grup: durumu SADECE o kisiye ozelden gonder; gruba da
+        // "ilettim" diye yanit ver (o kisinin mesajina cevap olarak).
         const r = await gonder(uid, metinGM);
-        if (!(r && r.ok)) {
+        if (r && r.ok) {
+          const kim = kac(String((m.from && (m.from.first_name || m.from.username)) || '')) || 'GM durumu';
+          await cagir('sendMessage', {
+            chat_id: chatId,
+            text: '📩 <b>' + kim + '</b>, GM durumunu özelden ilettim ✅',
+            parse_mode: 'HTML',
+            reply_to_message_id: m.message_id,
+          });
+        } else {
           // Bot o kisiye ozel yazamiyor (once /start demeli).
-          await gonder(chatId, '📩 GM durumunu özelden göndermek istedim ama önce ' +
-            'botu başlatmalısın: bana özelden <code>/start</code> yaz, sonra tekrar dene.');
+          await cagir('sendMessage', {
+            chat_id: chatId,
+            text: '📩 GM durumunu özelden göndermek istedim ama önce bana özelden ' +
+              '<code>/start</code> yazmalısın, sonra tekrar dene.',
+            parse_mode: 'HTML',
+            reply_to_message_id: m.message_id,
+          });
         }
       } else {
         await gonder(chatId, metinGM);

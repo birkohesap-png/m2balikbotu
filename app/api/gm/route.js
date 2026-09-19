@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { sql, tablolariHazirla } from '@/lib/db';
 import { tumMusterilereBildir } from '@/lib/telegram';
-import { gatewayGmTara, gmAyarliMi, gmIsimleri, gmRisk } from '@/lib/gm';
+import { gatewayGmTara, gmAyarliMi, gmIsimleri, gmRisk, gmGorunen } from '@/lib/gm';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -68,8 +68,8 @@ async function calis(req) {
     const yuksek = yeni.filter((a) => gmRisk(a) === 'yuksek');
     const dusuk = yeni.filter((a) => gmRisk(a) !== 'yuksek');
     const satirlar = [
-      ...yuksek.map((a) => '🔴 <b>' + kac(a) + '</b> — YÜKSEK RİSK'),
-      ...dusuk.map((a) => '🟡 <b>' + kac(a) + '</b> — düşük risk'),
+      ...yuksek.map((a) => '🔴 <b>' + kac(gmGorunen(a)) + '</b> — YÜKSEK RİSK'),
+      ...dusuk.map((a) => '🟡 <b>' + kac(gmGorunen(a)) + '</b> — düşük risk'),
     ].join('\n');
 
     let metin;
@@ -77,14 +77,14 @@ async function calis(req) {
       // En az bir yuksek riskli GM aktif -> sert uyari.
       metin =
         '⚠️ <b>GM AKTİF — YÜKSEK RİSK!</b>\n\n' +
-        'Şu an Discord\'da aktif oyun yöneticisi (GM):\n' + satirlar + '\n\n' +
+        'Şu an aktif oyun yöneticisi (GM):\n' + satirlar + '\n\n' +
         'Ban riski <b>yüksek</b>. Lütfen oyunu HEMEN kapatın. Aşağıdaki butonla ' +
         'bilgisayarınızı ya da sadece oyunu kapatabilirsiniz.';
     } else {
       // Sadece dusuk riskli GM(ler) -> daha yumusak uyari.
       metin =
         '🟡 <b>GM aktif (düşük risk)</b>\n\n' +
-        'Şu an Discord\'da aktif GM:\n' + satirlar + '\n\n' +
+        'Şu an aktif GM:\n' + satirlar + '\n\n' +
         'Ban riski düşük ama dikkatli olun. İstersen aşağıdaki butonla oyunu ' +
         'veya bilgisayarını kapatabilirsin.';
     }
