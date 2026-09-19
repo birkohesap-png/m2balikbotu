@@ -52,6 +52,7 @@ const SATIN_AL =
   '🔒 <b>K34 Balık Botu — GM Nöbeti</b>\n\n' +
   'Bu özellik yalnızca <b>K34 lisansı</b> olan kullanıcılar içindir. ' +
   'GM aktif olduğu an anında uyarı almak ve botu kullanmak için satın alım gereklidir.\n\n' +
+  '🛒 Satın almak için: <b>@k34balik</b> adminine ulaşın.\n' +
   '🌐 <b>m2balikbotu.com</b>\n\n' +
   'Lisansın varsa özelden <code>/baglan ANAHTAR</code> yazarak bağla.';
 
@@ -486,14 +487,16 @@ export async function POST(req) {
     }
 
     if (komut === '/gm') {
-      // Lisans kapisi: /gm yazan kisinin gecerli lisansi yoksa "satin al" mesaji.
-      // (Grupta da calisir - kisiyi m.from.id ile taniriz.)
-      if (!(await lisansliMi(m.from && m.from.id))) {
+      const grup = m.chat.type === 'group' || m.chat.type === 'supergroup';
+      const uid = m.from && m.from.id;
+      // Lisans kapisi: gecerli lisansi yoksa "satin al" mesaji.
+      // Lisanssiz + GRUP: mesaj gruba yazilir (herkes gorur - tanitim).
+      if (!(await lisansliMi(uid))) {
         await gonder(chatId, SATIN_AL);
         return OK();
       }
       if (!gmAyarliMi()) {
-        await gonder(chatId, '🛡 <b>GM Nöbeti</b>\n\nHenüz ayarlı değil.');
+        await gonder(grup ? uid : chatId, '🛡 <b>GM Nöbeti</b>\n\nHenüz ayarlı değil.');
         return OK();
       }
       const liste = gmListesi();
@@ -516,7 +519,18 @@ export async function POST(req) {
       } else {
         alt = '\n\n<i>Henüz kontrol yapılmadı.</i>';
       }
-      await gonder(chatId, '🛡 <b>GM Nöbeti</b>\n\n' + satirlar.join('\n') + alt);
+      const metinGM = '🛡 <b>GM Nöbeti</b>\n\n' + satirlar.join('\n') + alt;
+      if (grup) {
+        // Lisansli + grup: SADECE o kisiye ozelden gonder (grup kirlenmesin).
+        const r = await gonder(uid, metinGM);
+        if (!(r && r.ok)) {
+          // Bot o kisiye ozel yazamiyor (once /start demeli).
+          await gonder(chatId, '📩 GM durumunu özelden göndermek istedim ama önce ' +
+            'botu başlatmalısın: bana özelden <code>/start</code> yaz, sonra tekrar dene.');
+        }
+      } else {
+        await gonder(chatId, metinGM);
+      }
       return OK();
     }
 
