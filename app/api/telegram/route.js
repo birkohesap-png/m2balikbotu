@@ -552,6 +552,17 @@ export async function POST(req) {
     }
 
     if (komut === '/ekranresmi' || komut === '/ekran') {
+      // GRUPTA CALISMAZ: PC listesi/ekran goruntusu herkese sizmasin - ozelde.
+      if (m.chat.type === 'group' || m.chat.type === 'supergroup') {
+        await cagir('sendMessage', {
+          chat_id: chatId,
+          text: '📸 Ekran görüntüsü komutu güvenlik için sadece <b>özelden</b> çalışır. ' +
+            'Bana özelden yaz: <code>/ekranresmi</code>',
+          parse_mode: 'HTML',
+          reply_to_message_id: m.message_id,
+        });
+        return OK();
+      }
       const lis = await lisansliMi(m.from && m.from.id);
       if (!lis) { await gonder(chatId, SATIN_AL); return OK(); }
       const { rows: cih } = await sql`
