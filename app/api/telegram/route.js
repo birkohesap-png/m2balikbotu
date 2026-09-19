@@ -21,6 +21,7 @@ const YARDIM =
   '/hesaplar — açık hesapları gör\n' +
   '/sira — sıralı mola ve Metin+ reset sırası\n' +
   '/gm — Discord GM durumu (aktif/kapalı)\n' +
+  '/ekranresmi — bir PC\'nin anlık ekran görüntüsü\n' +
   '/durum — lisans bilgin\n' +
   '/bildirim — özel mesaj bildirimini aç/kapat\n' +
   '/cikis — bağlantıyı kes\n' +
@@ -34,6 +35,25 @@ async function bagliLisans(chatId) {
      WHERE b.chat_id = ${chatId} LIMIT 1`;
   return rows[0] || null;
 }
+
+// Bir Telegram kullanicisinin GECERLI (iptalsiz, suresi dolmamis) lisansi var mi?
+// Grup sohbetinde de calissin diye chat degil, KULLANICININ kimligiyle bakar
+// (ozel sohbette chat_id zaten kullanici kimligine esittir).
+async function lisansliMi(userId) {
+  if (!userId) return null;
+  const { rows } = await sql`
+    SELECT l.* FROM tg_baglar b JOIN lisanslar l ON l.id = b.lisans_id
+     WHERE b.chat_id = ${userId} AND NOT l.iptal
+       AND (l.bitis IS NULL OR l.bitis > NOW()) LIMIT 1`;
+  return rows[0] || null;
+}
+
+const SATIN_AL =
+  '🔒 <b>K34 Balık Botu — GM Nöbeti</b>\n\n' +
+  'Bu özellik yalnızca <b>K34 lisansı</b> olan kullanıcılar içindir. ' +
+  'GM aktif olduğu an anında uyarı almak ve botu kullanmak için satın alım gereklidir.\n\n' +
+  '🌐 <b>m2balikbotu.com</b>\n\n' +
+  'Lisansın varsa özelden <code>/baglan ANAHTAR</code> yazarak bağla.';
 
 async function hesaplariTopla(lisansId) {
   const { rows } = await sql`
@@ -205,6 +225,30 @@ export async function POST(req) {
     if (u.callback_query) {
       const q = u.callback_query;
       const chatId = q.message.chat.id;
+
+      // Ekran goruntusu istegi (grupta da calisir - basan kisinin lisansiyla).
+      if (q.data && q.data.startsWith('ekr:')) {
+        const lis = await lisansliMi(q.from && q.from.id);
+        if (!lis) { await cevapla(q.id, 'Lisans gerekli'); return OK(); }
+        const { rows } = await sql`
+          SELECT hwid, veri, EXTRACT(EPOCH FROM (NOW() - guncelleme)) AS yas
+            FROM durumlar WHERE id = ${q.data.slice(4)} AND lisans_id = ${lis.id}`;
+        const c = rows[0];
+        if (!c) { await cevapla(q.id, 'Bilgisayar bulunamadı'); return OK(); }
+        if (Number(c.yas) >= CANLI_SN) { await cevapla(q.id, 'Bu bilgisayar çevrimdışı'); return OK(); }
+        await sql`
+          DELETE FROM komutlar WHERE lisans_id = ${lis.id} AND hwid = ${c.hwid}
+             AND tur = 'ekran' AND teslim IS NULL`;
+        await sql`
+          INSERT INTO komutlar (lisans_id, hwid, tur, veri)
+          VALUES (${lis.id}, ${c.hwid}, 'ekran', ${JSON.stringify({ chat_id: q.from.id })}::jsonb)`;
+        await cevapla(q.id, '📸 İstek gönderildi');
+        await gonder(q.from.id,
+          '📸 Ekran görüntüsü istendi · 💻 <b>' + kac((c.veri && c.veri.pc) || c.hwid.slice(0, 8)) + '</b>\n\n' +
+          'Bot en geç ~30 sn içinde çekip buraya gönderecek.');
+        return OK();
+      }
+
       const bag = await bagliLisans(chatId);
       if (!bag) {
         await cevapla(q.id, 'Önce lisansını bağla');
@@ -442,6 +486,12 @@ export async function POST(req) {
     }
 
     if (komut === '/gm') {
+      // Lisans kapisi: /gm yazan kisinin gecerli lisansi yoksa "satin al" mesaji.
+      // (Grupta da calisir - kisiyi m.from.id ile taniriz.)
+      if (!(await lisansliMi(m.from && m.from.id))) {
+        await gonder(chatId, SATIN_AL);
+        return OK();
+      }
       if (!gmAyarliMi()) {
         await gonder(chatId, '🛡 <b>GM Nöbeti</b>\n\nHenüz ayarlı değil.');
         return OK();
@@ -467,6 +517,26 @@ export async function POST(req) {
         alt = '\n\n<i>Henüz kontrol yapılmadı.</i>';
       }
       await gonder(chatId, '🛡 <b>GM Nöbeti</b>\n\n' + satirlar.join('\n') + alt);
+      return OK();
+    }
+
+    if (komut === '/ekranresmi' || komut === '/ekran') {
+      const lis = await lisansliMi(m.from && m.from.id);
+      if (!lis) { await gonder(chatId, SATIN_AL); return OK(); }
+      const { rows: cih } = await sql`
+        SELECT id, hwid, veri, EXTRACT(EPOCH FROM (NOW() - guncelleme)) AS yas
+          FROM durumlar WHERE lisans_id = ${lis.id} ORDER BY id ASC`;
+      if (!cih.length) {
+        await gonder(chatId, '📸 <b>Ekran Görüntüsü</b>\n\nKayıtlı bilgisayar yok. Önce botu bir PC\'de aç.');
+        return OK();
+      }
+      const kb = cih.map((c) => {
+        const ad = (c.veri && c.veri.pc) ? String(c.veri.pc) : c.hwid.slice(0, 8);
+        const cevrimici = Number(c.yas) < CANLI_SN;
+        return [{ text: (cevrimici ? '🟢 ' : '⚪ ') + ad, callback_data: 'ekr:' + c.id }];
+      });
+      await gonder(chatId, '📸 <b>Ekran Görüntüsü</b>\n\nHangi bilgisayarın ekranını görmek istersin?',
+                   { inline_keyboard: kb });
       return OK();
     }
 

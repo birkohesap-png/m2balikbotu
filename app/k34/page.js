@@ -396,8 +396,18 @@ export default function Admin() {
                                   </button>
                                 )}
                                 <button
+                                  onClick={() => {
+                                    if (confirm('Bu bilgisayar UZAKTAN kapatılsın mı?'))
+                                      islem(l.id, { islem: 'uzaktanKapat', hwid: c.hwid, mod: 'pc' });
+                                  }}
+                                  style={{ ...S.mini, marginLeft: 'auto' }}
+                                  title="Bu PC'yi uzaktan kapat (bot ~30 sn içinde uygular)"
+                                >
+                                  🖥 Kapat
+                                </button>
+                                <button
                                   onClick={() => islem(l.id, { islem: 'cihazSil', hwid: c.hwid })}
-                                  style={{ ...S.mini, ...S.miniKirmizi, marginLeft: 'auto' }}
+                                  style={{ ...S.mini, ...S.miniKirmizi }}
                                 >
                                   Kaldır
                                 </button>
@@ -434,6 +444,16 @@ export default function Admin() {
                               </button>
                             </div>
                             <div style={{ display: 'flex', gap: 8, marginTop: 10, flexWrap: 'wrap' }}>
+                              <button
+                                onClick={() => {
+                                  if (confirm('Bu key\'e bağlı TÜM bilgisayarlar uzaktan kapatılsın mı?'))
+                                    islem(l.id, { islem: 'uzaktanKapat', mod: 'pc' });
+                                }}
+                                style={{ ...S.mini, ...S.miniKirmizi }}
+                                title="Bu key'in tüm PC'lerini uzaktan kapat"
+                              >
+                                🖥 Tüm PC'leri kapat
+                              </button>
                               <button onClick={() => islem(l.id, { islem: 'cihazSifirla' })} style={S.mini}>
                                 Tüm cihazları sıfırla
                               </button>

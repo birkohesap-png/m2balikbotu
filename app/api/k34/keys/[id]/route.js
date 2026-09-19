@@ -79,6 +79,24 @@ export async function PATCH(req, { params }) {
         await sql`DELETE FROM kullanim WHERE lisans_id = ${id}`;
       }
       break;
+    case 'uzaktanKapat': {
+      // UZAKTAN KAPATMA: bu key'in cihazlarina 'kapat' komutu birakir; bot ~30 sn
+      // icinde alir. mod='pc' -> PC kapat (olmazsa oyun), 'oyun' -> sadece oyun.
+      // hwid verilirse tek cihaz, yoksa TUM cihazlar. (Bot >=2.7.0 gerekir.)
+      const mod = g.mod === 'oyun' ? 'oyun' : 'pc';
+      const { rows: cih } = g.hwid
+        ? await sql`SELECT DISTINCT hwid FROM durumlar WHERE lisans_id = ${id} AND hwid = ${String(g.hwid)}`
+        : await sql`SELECT DISTINCT hwid FROM durumlar WHERE lisans_id = ${id}`;
+      for (const c of cih) {
+        await sql`
+          DELETE FROM komutlar WHERE lisans_id = ${id} AND hwid = ${c.hwid}
+             AND tur = 'kapat' AND teslim IS NULL`;
+        await sql`
+          INSERT INTO komutlar (lisans_id, hwid, tur, veri)
+          VALUES (${id}, ${c.hwid}, 'kapat', ${JSON.stringify({ mod })}::jsonb)`;
+      }
+      return NextResponse.json({ ok: true, gonderilen: cih.length });
+    }
     default:
       return NextResponse.json({ ok: false, mesaj: 'Bilinmeyen işlem' }, { status: 400 });
   }
