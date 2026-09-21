@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { sql, tablolariHazirla, lisansGecerliMi } from '@/lib/db';
 import { varlikAdresi } from '@/lib/github';
+import { urunNormal } from '@/lib/urun';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -61,18 +62,24 @@ export async function POST(req) {
       return yanit({ ok: false, sebep: l.sebep, mesaj: 'Gecerli lisans bulunamadi' }, 403);
     }
 
+    // URUN AYRIMI: PvP botu urun='pvp' gonderir; eski/TR botlari gondermez
+    // -> 'tr'. Her urun yalnizca KENDI kurulum dosyasinin adresini alir.
+    const urun = urunNormal(govde.urun);
     const { rows } = await sql`
       SELECT surum, sha256, boyut, varlik_id
         FROM surumler
-       WHERE aktif = TRUE AND varlik_id <> ''
+       WHERE aktif = TRUE AND varlik_id <> '' AND urun = ${urun}
        ORDER BY yayin DESC
        LIMIT 1`;
     const s = rows[0];
-    if (!s) return yanit({ ok: false, sebep: 'surum_yok', mesaj: 'Yayinlanmis surum yok' }, 404);
+    if (!s) {
+      return yanit({ ok: false, urun, sebep: 'surum_yok', mesaj: 'Yayinlanmis surum yok' }, 404);
+    }
 
     const url = await varlikAdresi(s.varlik_id);
     return yanit({
       ok: true,
+      urun,
       url,
       surum: s.surum,
       sha256: s.sha256 || '',

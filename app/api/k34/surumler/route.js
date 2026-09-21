@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { sql, tablolariHazirla } from '@/lib/db';
 import { adminMi } from '@/lib/auth';
 import { sonYayinVarliklari } from '@/lib/github';
+import { urunNormal } from '@/lib/urun';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -56,15 +57,19 @@ export async function POST(req) {
     .filter(Boolean)
     .slice(0, 20);
 
+  // URUN AYRIMI: 'tr' (K34) veya 'pvp' (K34 PvP). Her urunun KENDI tek aktif
+  // surumu olur; birini yayinlamak digerinin musterilerini ETKILEMEZ.
+  const urun = urunNormal(g.urun);
+
   try {
     await tablolariHazirla();
-    // Yeni surum tek "aktif" olsun; eskiler pasife cekilir.
-    await sql`UPDATE surumler SET aktif = FALSE`;
+    // Yeni surum BU URUNDE tek "aktif" olsun; bu urunun eskileri pasife cekilir.
+    await sql`UPDATE surumler SET aktif = FALSE WHERE urun = ${urun}`;
     await sql`
-      INSERT INTO surumler (surum, notlar, zorunlu, sha256, boyut, varlik_id, aktif)
-      VALUES (${surum}, ${JSON.stringify(notlar)}::jsonb, ${!!g.zorunlu},
+      INSERT INTO surumler (urun, surum, notlar, zorunlu, sha256, boyut, varlik_id, aktif)
+      VALUES (${urun}, ${surum}, ${JSON.stringify(notlar)}::jsonb, ${!!g.zorunlu},
               ${sha256}, ${Number(g.boyut || 0)}, ${varlikId}, TRUE)
-      ON CONFLICT (surum) DO UPDATE SET
+      ON CONFLICT (urun, surum) DO UPDATE SET
         notlar = EXCLUDED.notlar, zorunlu = EXCLUDED.zorunlu,
         sha256 = EXCLUDED.sha256, boyut = EXCLUDED.boyut,
         varlik_id = EXCLUDED.varlik_id, aktif = TRUE, yayin = NOW()`;
@@ -91,7 +96,10 @@ export async function PATCH(req) {
   try {
     await tablolariHazirla();
     if (g.aktif) {
-      await sql`UPDATE surumler SET aktif = FALSE`;
+      // Yalnizca AYNI URUNUN diger surumleri pasife cekilir (TR'yi yayina
+      // almak PvP'nin aktif surumunu kapatmasin, tersi de).
+      await sql`UPDATE surumler SET aktif = FALSE
+                 WHERE urun = (SELECT urun FROM surumler WHERE id = ${id})`;
       await sql`UPDATE surumler SET aktif = TRUE WHERE id = ${id}`;
     } else {
       await sql`UPDATE surumler SET aktif = FALSE WHERE id = ${id}`;
