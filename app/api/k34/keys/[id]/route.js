@@ -16,9 +16,11 @@ export async function GET(req, { params }) {
   // Cihazlar + gunluk limit sayaci (kullanim). donem_sn: bu donemde birikmis
   // aktif saniye; dinlenme_bitis: doluysa 8 saatlik dinlenme bitis ani.
   const { rows: cihazlar } = await sql`
-    SELECT c.*, k.donem_sn, k.dinlenme_bitis
+    SELECT c.*, k.donem_sn, k.dinlenme_bitis,
+           d.veri->>'ip' AS ip, d.veri->>'pc' AS pc, d.guncelleme AS canli
       FROM cihazlar c
       LEFT JOIN kullanim k ON k.lisans_id = c.lisans_id AND k.hwid = c.hwid
+      LEFT JOIN durumlar d ON d.lisans_id = c.lisans_id AND d.hwid = c.hwid
      WHERE c.lisans_id = ${id} ORDER BY c.ilk ASC`;
   return NextResponse.json({ ok: true, lisans: rows[0] || null, cihazlar });
 }

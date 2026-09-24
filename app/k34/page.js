@@ -35,16 +35,15 @@ function sureKisa(sn) {
 /** Bir cihazin gunluk limit durumu (calisma / dinlenme). */
 function limitDurum(c, limitSaat) {
   if (!limitSaat || limitSaat <= 0) return { yazi: 'sınırsız', renk: 'var(--gri2)' };
-  const bitis = c.dinlenme_bitis ? new Date(c.dinlenme_bitis).getTime() : 0;
-  const kalanDinlenme = bitis ? Math.floor((bitis - Date.now()) / 1000) : 0;
-  if (kalanDinlenme > 0) {
-    return { yazi: `😴 dinlenme ${sureKisa(kalanDinlenme)} kaldı`, renk: 'var(--kirmizi)' };
-  }
   const kullanilan = c.donem_sn || 0;
-  return {
-    yazi: `${sureKisa(kullanilan)} / ${limitSaat}sa`,
-    renk: kullanilan >= limitSaat * 3600 ? 'var(--kirmizi)' : 'var(--yesil)',
-  };
+  const dolu = kullanilan >= limitSaat * 3600;
+  if (dolu) {
+    // Gunluk hak dolmus; sifirlanma 03:00'te (dinlenme_bitis = siradaki sifirlama).
+    const bitis = c.dinlenme_bitis ? new Date(c.dinlenme_bitis).getTime() : 0;
+    const kalan = bitis ? Math.floor((bitis - Date.now()) / 1000) : 0;
+    return { yazi: `🔴 doldu · sıfırlanma ${sureKisa(kalan)} sonra`, renk: 'var(--kirmizi)' };
+  }
+  return { yazi: `${sureKisa(kullanilan)} / ${limitSaat}sa`, renk: 'var(--yesil)' };
 }
 
 export default function Admin() {
@@ -59,6 +58,7 @@ export default function Admin() {
   const [acik, setAcik] = useState(null);
   const [cihazlar, setCihazlar] = useState([]);
   const [limitDeger, setLimitDeger] = useState(16);
+  const [cihazDeger, setCihazDeger] = useState(1);
   const [mesaj, setMesaj] = useState('');
 
   const yukle = useCallback(async (q = '') => {
@@ -143,6 +143,7 @@ export default function Admin() {
     if (d.ok) {
       setCihazlar(d.cihazlar);
       setLimitDeger(d.lisans && d.lisans.gunluk_limit_saat != null ? d.lisans.gunluk_limit_saat : 16);
+      setCihazDeger(d.lisans && d.lisans.max_cihaz ? d.lisans.max_cihaz : 1);
       setAcik(id);
     }
   }
@@ -381,6 +382,8 @@ export default function Admin() {
                               return (
                               <div key={c.id} style={S.cihaz}>
                                 <code style={{ fontSize: 11.5, color: 'var(--altin2)' }}>{c.hwid}</code>
+                                {c.pc && <span style={{ fontSize: 11.5, color: 'var(--beyaz)' }}>💻 {c.pc}</span>}
+                                {c.ip && <code style={{ fontSize: 11.5, color: 'var(--yesil)' }} title="Dış IP adresi">🌐 {c.ip}</code>}
                                 <span style={{ fontSize: 11.5, color: 'var(--gri2)' }}>ilk: {tarih(c.ilk)}</span>
                                 <span style={{ fontSize: 11.5, color: 'var(--gri2)' }}>son: {tarih(c.son)}</span>
                                 <span style={{ fontSize: 11.5, color: ld.renk, fontWeight: 600 }} title="Günlük çalışma">
@@ -427,17 +430,27 @@ export default function Admin() {
                                 onChange={(e) => setLimitDeger(e.target.value)}
                                 style={{ ...S.input, width: 64, padding: '4px 8px', margin: 0 }}
                               />
-                              <span style={{ fontSize: 12, color: 'var(--gri2)' }}>saat (0 = kapalı/sınırsız)</span>
+                              <span style={{ fontSize: 12, color: 'var(--gri2)' }}>saat (0 = sınırsız)</span>
+                              <span style={{ fontSize: 12.5, color: 'var(--gri)', marginLeft: 10 }}>
+                                <b>PC hakkı:</b>
+                              </span>
+                              <input
+                                type="number" min="1" max="64"
+                                value={cihazDeger}
+                                onChange={(e) => setCihazDeger(e.target.value)}
+                                style={{ ...S.input, width: 60, padding: '4px 8px', margin: 0 }}
+                                title="Bu key kaç bilgisayarda açılabilir"
+                              />
                               <button
                                 onClick={() => islem(l.id, {
                                   islem: 'duzenle',
                                   musteri: l.musteri || '',
-                                  max_cihaz: l.max_cihaz,
+                                  max_cihaz: cihazDeger,
                                   gunluk_limit_saat: limitDeger,
                                 })}
                                 style={S.mini}
                               >
-                                Limiti kaydet
+                                Kaydet
                               </button>
                               <button onClick={() => islem(l.id, { islem: 'limitSifirla' })} style={S.mini}>
                                 Tüm sayaçları sıfırla

@@ -67,30 +67,21 @@ async function calis(req) {
 
   let gonderilen = 0;
   if (yeni.length && !debugIstendi) {
-    // Her yeni aktif GM'i risk seviyesine gore ayir (yuksek/dusuk).
-    const yuksek = yeni.filter((a) => gmRisk(a) === 'yuksek');
-    const dusuk = yeni.filter((a) => gmRisk(a) !== 'yuksek');
-    const satirlar = [
-      ...yuksek.map((a) => '🔴 <b>' + kac(gmGorunen(a)) + '</b> — YÜKSEK RİSK'),
-      ...dusuk.map((a) => '🟡 <b>' + kac(gmGorunen(a)) + '</b> — düşük risk'),
-    ].join('\n');
+    const yuksekVar = yeni.some((a) => gmRisk(a) === 'yuksek');
+    // Her aktif GM icin satir + "oyundan mesaj atip sunucunda aktif mi ogren" yonergesi.
+    const satirlar = yeni.map((a) => {
+      const risk = gmRisk(a) === 'yuksek';
+      return (risk ? '🔴' : '🟡') + ' <b>[GM]' + kac(gmGorunen(a)) + '</b> — ' +
+        (risk ? 'YÜKSEK RİSK' : 'düşük risk');
+    }).join('\n');
 
-    let metin;
-    if (yuksek.length) {
-      // En az bir yuksek riskli GM aktif -> sert uyari.
-      metin =
-        '⚠️ <b>GM AKTİF — YÜKSEK RİSK!</b>\n\n' +
-        'Şu an aktif oyun yöneticisi (GM):\n' + satirlar + '\n\n' +
-        'Ban riski <b>yüksek</b>. Lütfen oyunu HEMEN kapatın. Aşağıdaki butonla ' +
-        'bilgisayarınızı ya da sadece oyunu kapatabilirsiniz.';
-    } else {
-      // Sadece dusuk riskli GM(ler) -> daha yumusak uyari.
-      metin =
-        '🟡 <b>GM aktif (düşük risk)</b>\n\n' +
-        'Şu an aktif GM:\n' + satirlar + '\n\n' +
-        'Ban riski düşük ama dikkatli olun. İstersen aşağıdaki butonla oyunu ' +
-        'veya bilgisayarını kapatabilirsin.';
-    }
+    const metin =
+      (yuksekVar ? '⚠️ <b>GM AKTİF — YÜKSEK RİSK!</b>' : '🟡 <b>GM aktif (düşük risk)</b>') + '\n\n' +
+      'Şu an aktif oyun yöneticisi (GM):\n' + satirlar + '\n\n' +
+      '👉 <b>Oyundan bu GM\'e mesaj atın</b>, bulunduğunuz sunucuda aktif mi değil mi öğrenin.\n' +
+      '⚠️ <b>BOT KARAKTERİNİZDEN ATMAYINIZ!</b>\n\n' +
+      (yuksekVar ? 'Ban riski yüksek. ' : 'Dikkatli olun. ') +
+      'Aşağıdaki butonla oyunu ya da bilgisayarınızı kapatabilirsiniz.';
     gonderilen = await tumMusterilereBildir(metin, kapatKlavye());
   }
 

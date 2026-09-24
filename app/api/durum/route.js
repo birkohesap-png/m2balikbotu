@@ -32,8 +32,12 @@ export async function POST(req) {
     const hwid = String(g.hwid).toUpperCase();
     const s = g.sira && typeof g.sira === 'object' ? g.sira : {};
     const saat = Number(g.saat);
+    // Musterinin genel (dis) IP'si - admin panelinde "hangi key'de hangi IP".
+    const ip = String(req.headers.get('x-forwarded-for') || req.headers.get('x-real-ip') || '')
+      .split(',')[0].trim().slice(0, 45);
     const veri = {
       pc: String(g.pc || '').slice(0, 60),
+      ip,
       bot: g.bot || {},
       hesaplar: Array.isArray(g.hesaplar) ? g.hesaplar.slice(0, 20) : [],
       // Botun kendi saati (epoch sn). VM saati kayabildigi icin Telegram'da
