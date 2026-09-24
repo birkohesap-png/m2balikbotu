@@ -79,13 +79,25 @@ export async function POST(req) {
       const { rows: say } = await sql`
         SELECT COUNT(*)::int AS n FROM cihazlar WHERE lisans_id = ${l.id}`;
       if (say[0].n >= l.max_cihaz) {
-        return yanit({
-          ok: false,
-          sebep: 'cihaz_limiti',
-          kalan_sn: 0,
-          max_cihaz: l.max_cihaz,
-          cihaz_sayisi: say[0].n,
-        });
+        // Spoofer HWID'i degistirince ESKI kayit "olu" kalir ve limiti doldurur.
+        // Cozum: UZUN SUREDIR (20 dk+) gorulmeyen = OFFLINE en eski cihazi geri
+        // donustur. Boylece ayni PC tekrar sigar; ama HEPSI aktifse (gercekten
+        // max_cihaz kadar es zamanli PC) reddedilir -> per-PC koruma bozulmaz.
+        const { rows: olu } = await sql`
+          SELECT id FROM cihazlar
+           WHERE lisans_id = ${l.id} AND son < NOW() - INTERVAL '20 minutes'
+           ORDER BY son ASC LIMIT 1`;
+        if (olu.length) {
+          await sql`DELETE FROM cihazlar WHERE id = ${olu[0].id}`;
+        } else {
+          return yanit({
+            ok: false,
+            sebep: 'cihaz_limiti',
+            kalan_sn: 0,
+            max_cihaz: l.max_cihaz,
+            cihaz_sayisi: say[0].n,
+          });
+        }
       }
       await sql`
         INSERT INTO cihazlar (lisans_id, hwid) VALUES (${l.id}, ${hwid})
