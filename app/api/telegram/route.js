@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { sql, tablolariHazirla } from '@/lib/db';
-import { gonder, duzenle, cevapla, sureMetni, cagir } from '@/lib/telegram';
+import { gonder, duzenle, cevapla, sureMetni, cagir, BILDIRIM_KATEGORILER } from '@/lib/telegram';
 import { adayYap, siraMetni } from '@/lib/sira';
 import { gmListesi, gmAyarliMi } from '@/lib/gm';
 import {
@@ -25,7 +25,8 @@ const YARDIM =
   '/pckapat — bir PC\'yi uzaktan kapat\n' +
   '/oyunukapat — bir PC\'de sadece oyunu kapat\n' +
   '/durum — lisans bilgin\n' +
-  '/bildirim — özel mesaj bildirimini aç/kapat\n' +
+  '/bildirim — tüm bildirimleri aç/kapat\n' +
+  '/bildirimler — hangi bildirimler gelsin, tek tek seç\n' +
   '/cikis — bağlantıyı kes\n' +
   '/yardim — bu mesaj';
 
@@ -192,17 +193,42 @@ function hesapMetni(h) {
 }
 
 async function hesaplariYaz(chatId, lisansId, messageId) {
-  const liste = await hesaplariTopla(lisansId);
+  // (KULLANICI ISTEGI 29 Eyl 2026) SADECE cevrimici (acik) PC'ler gosterilir.
+  // Cevrimdisi kayitlar ve spoofer'in biraktigi eski HWID satirlari (artik
+  // guncellenmedigi icin cevrimdisi) listede cikmaz -> ayni PC iki kez gorunmez.
+  const liste = (await hesaplariTopla(lisansId)).filter((h) => h.canli);
   if (!liste.length) {
     const m =
-      'Şu an açık hesap görünmüyor.\n\n' +
-      'Botu çalıştırdığında hesapların burada listelenir. ' +
+      'Şu an açık (çevrimiçi) hesap yok.\n\n' +
+      'Botu çalıştırdığında açık hesapların burada listelenir. ' +
       'Bot açıksa bir dakika içinde görünür.';
     return messageId ? duzenle(chatId, messageId, m) : gonder(chatId, m);
   }
-  const acik = liste.filter((h) => h.canli).length;
-  const metin = `<b>Hesapların</b> — ${acik}/${liste.length} çevrimiçi\n\nDetay için hesaba dokun:`;
+  const metin = `<b>Açık hesapların</b> — ${liste.length} çevrimiçi\n\nDetay için hesaba dokun:`;
   const kb = hesapKlavye(liste);
+  return messageId ? duzenle(chatId, messageId, metin, kb) : gonder(chatId, metin, kb);
+}
+
+/* ---------------- Bildirim tercihleri menusu (kategori bazli) -------------- */
+function bildirimKlavye(kapali) {
+  const k = Array.isArray(kapali) ? kapali : [];
+  return {
+    inline_keyboard: BILDIRIM_KATEGORILER.map((c) => [
+      { text: `${k.includes(c.key) ? '🔕' : '🔔'} ${c.ad}`, callback_data: `bkat:${c.key}` },
+    ]),
+  };
+}
+
+async function bildirimAyarYaz(chatId, lisansId, messageId) {
+  const { rows } = await sql`SELECT bildirim_kapali FROM lisanslar WHERE id = ${lisansId}`;
+  const kapali = rows[0] && Array.isArray(rows[0].bildirim_kapali) ? rows[0].bildirim_kapali : [];
+  const acik = BILDIRIM_KATEGORILER.length - kapali.length;
+  const metin =
+    '<b>🔔 Bildirim ayarları</b>\n\n' +
+    'Hangi bildirimlerin geleceğini seç. Dokununca açılır/kapanır.\n' +
+    '🔔 = gelir · 🔕 = gelmez\n\n' +
+    `Şu an <b>${acik}/${BILDIRIM_KATEGORILER.length}</b> kategori açık.`;
+  const kb = bildirimKlavye(kapali);
   return messageId ? duzenle(chatId, messageId, metin, kb) : gonder(chatId, metin, kb);
 }
 
@@ -307,6 +333,20 @@ export async function POST(req) {
       if (q.data === 'geri') {
         await hesaplariYaz(chatId, bag.id, q.message.message_id);
         await cevapla(q.id);
+        return OK();
+      }
+      if (q.data.startsWith('bkat:')) {
+        // Bildirim kategorisi ac/kapa (varsayilan hepsi acik).
+        const key = q.data.slice(5);
+        if (!BILDIRIM_KATEGORILER.some((c) => c.key === key)) { await cevapla(q.id); return OK(); }
+        const { rows } = await sql`SELECT bildirim_kapali FROM lisanslar WHERE id = ${bag.id}`;
+        let kapali = rows[0] && Array.isArray(rows[0].bildirim_kapali) ? rows[0].bildirim_kapali : [];
+        const kapaliydi = kapali.includes(key);
+        kapali = kapaliydi ? kapali.filter((x) => x !== key) : [...kapali, key];
+        await sql`UPDATE lisanslar SET bildirim_kapali = ${JSON.stringify(kapali)}::jsonb WHERE id = ${bag.id}`;
+        await bildirimAyarYaz(chatId, bag.id, q.message.message_id);
+        const ad = (BILDIRIM_KATEGORILER.find((c) => c.key === key) || {}).ad || key;
+        await cevapla(q.id, kapaliydi ? `🔔 ${ad} açıldı` : `🔕 ${ad} kapatıldı`);
         return OK();
       }
       if (q.data.startsWith('gmkapat:')) {
@@ -536,7 +576,14 @@ export async function POST(req) {
       const { rows } = await sql`
         UPDATE tg_baglar SET bildirim = NOT bildirim
          WHERE chat_id = ${chatId} RETURNING bildirim`;
-      await gonder(chatId, rows[0].bildirim ? '🔔 Bildirimler açıldı.' : '🔕 Bildirimler kapatıldı.');
+      await gonder(chatId, rows[0].bildirim
+        ? '🔔 Tüm bildirimler açıldı. Tek tek seçmek için /bildirimler.'
+        : '🔕 Tüm bildirimler kapatıldı.');
+      return OK();
+    }
+
+    if (komut === '/bildirimler') {
+      await bildirimAyarYaz(chatId, bag.id);
       return OK();
     }
 

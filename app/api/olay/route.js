@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { tablolariHazirla } from '@/lib/db';
-import { lisansDogrula, lisansaBildir } from '@/lib/telegram';
+import { lisansDogrula, lisansaBildir, bildirimKapaliMi } from '@/lib/telegram';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -14,6 +14,7 @@ const BASLIK = {
   envanter: '📦 <b>Envanter doldu</b>',
   yapboz: '🧩 <b>Yapboz tamamlandı</b>',
   uyari: '⚠️ <b>Uyarı</b>',
+  olum: '💀 <b>Karakter öldü</b>',
   karakter: '🎭 <b>Karakter değişimi</b>',
   mola: '☕ <b>Mola</b>',
   cikis: '🚪 <b>Çıkış yapılıyor</b>',
@@ -44,6 +45,11 @@ export async function POST(req) {
     if (!l) return NextResponse.json({ ok: false, sebep: 'gecersiz' }, { status: 401 });
 
     const tur = String(g.tur || 'uyari');
+    // (KULLANICI ISTEGI) Kullanicinin Telegram'dan kapattigi bildirim kategorisiyse
+    // hic gonderme (varsayilan hepsi acik). GM/sira bildirimleri bu uctan gecmez.
+    if (bildirimKapaliMi(l.bildirim_kapali, tur)) {
+      return NextResponse.json({ ok: true, gonderilen: 0, atlandi: true });
+    }
     const kacis = (t) =>
       String(t || '').slice(0, 400).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 
