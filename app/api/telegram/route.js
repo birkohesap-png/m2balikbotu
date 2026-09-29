@@ -22,6 +22,9 @@ const YARDIM =
   '/sira — sıralı mola ve Metin+ reset sırası\n' +
   '/gm — GM (yetkili) durumu (aktif/kapalı)\n' +
   '/ekranresmi — bir PC\'nin anlık ekran görüntüsü\n' +
+  '/oyunac — bir PC\'de oyunu aç (Gameforge → Oyna)\n' +
+  '/botbaslat — bir PC\'de botu başlat\n' +
+  '/botdurdur — bir PC\'de botu durdur\n' +
   '/pckapat — bir PC\'yi uzaktan kapat\n' +
   '/oyunukapat — bir PC\'de sadece oyunu kapat\n' +
   '/durum — lisans bilgin\n' +
@@ -232,6 +235,34 @@ async function bildirimAyarYaz(chatId, lisansId, messageId) {
   return messageId ? duzenle(chatId, messageId, metin, kb) : gonder(chatId, metin, kb);
 }
 
+/* ---- Uzaktan komut yardimcilari (oyun ac / bot baslat / bot durdur) -------- */
+// Bir lisansin PC'lerini secim klavyesine cevirir (cevrimici 🟢 / cevrimdisi ⚪).
+async function pcSecKlavye(lisId, prefix, emoji) {
+  const { rows: cih } = await sql`
+    SELECT id, hwid, veri, EXTRACT(EPOCH FROM (NOW() - guncelleme)) AS yas
+      FROM durumlar WHERE lisans_id = ${lisId} ORDER BY id ASC`;
+  return cih.map((c) => {
+    const ad = c.veri && c.veri.pc ? String(c.veri.pc) : c.hwid.slice(0, 8);
+    const on = Number(c.yas) < CANLI_SN;
+    return [{ text: (on ? '🟢 ' : '⚪ ') + emoji + ' ' + ad, callback_data: prefix + c.id }];
+  });
+}
+
+// Secilen PC'ye komut birakir (ayni turden teslim edilmemis eskiyi siler).
+async function komutBirak(lisId, durumId, tur, veri) {
+  const { rows } = await sql`
+    SELECT hwid, veri FROM durumlar WHERE id = ${durumId} AND lisans_id = ${lisId}`;
+  const c = rows[0];
+  if (!c) return null;
+  await sql`
+    DELETE FROM komutlar WHERE lisans_id = ${lisId} AND hwid = ${c.hwid}
+       AND tur = ${tur} AND teslim IS NULL`;
+  await sql`
+    INSERT INTO komutlar (lisans_id, hwid, tur, veri)
+    VALUES (${lisId}, ${c.hwid}, ${tur}, ${JSON.stringify(veri || {})}::jsonb)`;
+  return c;
+}
+
 /* ------------------------------------------------------------------ webhook */
 export async function POST(req) {
   // Telegram'in gonderdigi gizli baslik - baskasi bu ucu cagiramaz
@@ -317,6 +348,26 @@ export async function POST(req) {
         await gonder(q.from.id,
           '❌ <b>' + kac((c.veri && c.veri.pc) || c.hwid.slice(0, 8)) + '</b> için oyun kapatma komutu gönderildi.\n\n' +
           'Bot en geç ~30 sn içinde Metin2\'yi kapatır (PC açık kalır).');
+        return OK();
+      }
+
+      // Uzaktan: oyun ac / bot baslat / bot durdur (basan kisinin lisansiyla).
+      if (q.data && (q.data.startsWith('oya:') || q.data.startsWith('bbs:') || q.data.startsWith('bdr:'))) {
+        const lis = await lisansliMi(q.from && q.from.id);
+        if (!lis) { await cevapla(q.id, 'Lisans gerekli'); return OK(); }
+        const tip = q.data.slice(0, 4);
+        const durumId = q.data.slice(4);
+        const AYAR = {
+          'oya:': { tur: 'oyunac', kisa: '🎮 Oyun açılıyor', uzun: 'Gameforge açılıp Oyna\'ya basılacak. Oyun 15 sn\'de gelmezse tekrar denenir.' },
+          'bbs:': { tur: 'botbaslat', kisa: '▶️ Bot başlatılıyor', uzun: 'Bot son kullanılan ayarlarla başlatılacak (arayüzden bir kez başlatılmış olmalı).' },
+          'bdr:': { tur: 'botdurdur', kisa: '⏹ Bot durduruluyor', uzun: 'Bot durdurulacak.' },
+        }[tip];
+        const c = await komutBirak(lis.id, durumId, AYAR.tur, {});
+        if (!c) { await cevapla(q.id, 'Bilgisayar bulunamadı'); return OK(); }
+        await cevapla(q.id, AYAR.kisa);
+        await gonder(q.from.id,
+          AYAR.kisa + ' · 💻 <b>' + kac((c.veri && c.veri.pc) || c.hwid.slice(0, 8)) + '</b>\n\n' +
+          AYAR.uzun + ' Bot en geç ~30 sn içinde uygular.');
         return OK();
       }
 
@@ -535,7 +586,8 @@ export async function POST(req) {
     // /gm ve /ekranresmi kendi lisans kontrolunu KISININ kimligiyle yapar
     // (grupta calissin diye) - genel "sohbete bagli lisans" kapisindan muaf.
     const kisiselKomut = komut === '/gm' || komut === '/ekranresmi' || komut === '/ekran'
-      || komut === '/pckapat' || komut === '/oyunukapat';
+      || komut === '/pckapat' || komut === '/oyunukapat'
+      || komut === '/oyunac' || komut === '/botbaslat' || komut === '/botdurdur';
     const bag = kisiselKomut ? null : await bagliLisans(chatId);
     if (!bag && !kisiselKomut) {
       await gonder(chatId, 'Önce lisansını bağla:\n<code>/baglan K34-XXXXX-XXXXX-XXXXX</code>');
@@ -741,6 +793,33 @@ export async function POST(req) {
       await gonder(chatId,
         '❌ <b>Uzaktan Oyun Kapat</b>\n\nSeçtiğin bilgisayarda sadece <b>oyun (Metin2)</b> ' +
         'kapanır, PC açık kalır.\nHangisi?', { inline_keyboard: kb });
+      return OK();
+    }
+
+    // (KULLANICI ISTEGI 29 Eyl 2026) Uzaktan: oyun ac / bot baslat / bot durdur.
+    // Hepsi ozelden calisir; PC secilir, komut o PC'ye birakilir (~30 sn'de uygulanir).
+    if (komut === '/oyunac' || komut === '/botbaslat' || komut === '/botdurdur') {
+      if (m.chat.type === 'group' || m.chat.type === 'supergroup') {
+        await cagir('sendMessage', {
+          chat_id: chatId,
+          text: 'Bu komut güvenlik için sadece <b>özelden</b> çalışır: <code>' + komut + '</code>',
+          parse_mode: 'HTML', reply_to_message_id: m.message_id,
+        });
+        return OK();
+      }
+      const lis = await lisansliMi(m.from && m.from.id);
+      if (!lis) { await gonder(chatId, SATIN_AL); return OK(); }
+      const AYAR = {
+        '/oyunac':   { pfx: 'oya:', emoji: '🎮', bas: '🎮 <b>Oyun Aç</b>', not: 'Seçtiğin PC\'de Gameforge açılıp <b>Oyna</b>\'ya basılır.' },
+        '/botbaslat':{ pfx: 'bbs:', emoji: '▶️', bas: '▶️ <b>Bot Başlat</b>', not: 'Seçtiğin PC\'de bot <b>son ayarlarla</b> başlar.' },
+        '/botdurdur':{ pfx: 'bdr:', emoji: '⏹', bas: '⏹ <b>Bot Durdur</b>', not: 'Seçtiğin PC\'de bot durur.' },
+      }[komut];
+      const kb = await pcSecKlavye(lis.id, AYAR.pfx, AYAR.emoji);
+      if (!kb.length) {
+        await gonder(chatId, AYAR.bas + '\n\nKayıtlı bilgisayar yok. Önce botu bir PC\'de aç.');
+        return OK();
+      }
+      await gonder(chatId, AYAR.bas + '\n\n' + AYAR.not + '\nHangi bilgisayar?', { inline_keyboard: kb });
       return OK();
     }
 
