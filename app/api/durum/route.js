@@ -81,7 +81,7 @@ export async function POST(req) {
         guncellemeMs: onceki && onceki.guncelleme ? new Date(onceki.guncelleme).getTime() : 0,
         calisiyor: !!(g.bot && g.bot.calisiyor),
         nowMs: Date.now(),
-        limitSaat: Number.isFinite(limitSaat) ? limitSaat : 16,
+        limitSaat: Number.isFinite(limitSaat) ? limitSaat : 14,
       });
       const dbBitis = h.dinlenmeBitisMs ? new Date(h.dinlenmeBitisMs).toISOString() : null;
       await sql`

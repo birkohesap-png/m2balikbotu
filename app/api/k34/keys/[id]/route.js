@@ -68,7 +68,7 @@ export async function PATCH(req, { params }) {
         UPDATE lisanslar
            SET musteri = ${String(g.musteri || '').slice(0, 120)},
                max_cihaz = ${cihaz},
-               gunluk_limit_saat = ${Number.isFinite(limit) ? limit : 16}
+               gunluk_limit_saat = ${Number.isFinite(limit) ? limit : 14}
          WHERE id = ${id}`;
       break;
     }
