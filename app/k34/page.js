@@ -3,6 +3,7 @@
 import { Fragment, useEffect, useState, useCallback } from 'react';
 import Surumler from './Surumler';
 import Telegram from './Telegram';
+import Sizma from './Sizma';
 
 const PAKETLER = [
   { kod: 'gunluk', ad: 'Günlük · 300 TL · 1 PC', cihaz: 1, saat: 24 },
@@ -554,6 +555,9 @@ export default function Admin() {
             <div style={{ color: 'var(--gri2)', fontSize: 13, padding: '18px 0' }}>Kayıt yok.</div>
           )}
         </div>
+
+        {/* ---- sizma girisimleri / engelleme ---- */}
+        <Sizma bildir={bildir} />
 
         {/* ---- bot surumleri / otomatik guncelleme ---- */}
         <Surumler bildir={bildir} />

@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
-import { sql, tablolariHazirla } from '@/lib/db';
+import { sql, tablolariHazirla, engelliMi, sizmaKaydet } from '@/lib/db';
 import { lisansJetonu } from '@/lib/auth';
+import { ipAl } from '@/lib/sizma';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -17,7 +18,13 @@ export async function OPTIONS() {
  * POST { anahtar, hwid, surum? }
  * ->   { ok, sebep, kalan_sn, paket, max_cihaz, cihaz_sayisi, jeton, vk }
  *
- * sebep: gecerli | gecersiz | iptal | suresi_doldu | cihaz_limiti | hata
+ * sebep: gecerli | gecersiz | iptal | suresi_doldu | cihaz_limiti | engelli | hata
+ *
+ * SIZMA TESPITI (2 Eki 2026): her basarisiz deneme IP'siyle `sizma` tablosuna
+ * yazilir (panel -> Sizma Girisimleri). Panelden engellenen IP/HWID/anahtar
+ * 'engelli' alir ve vk ALAMAZ -> calinmis gecerli anahtarla bile sablonlar
+ * cozulmez. 'engelli' bilerek HTTP 200: bot 4xx'i "baglanti hatasi" sayip
+ * onbellekteki oturumla calismaya devam ederdi.
  *
  * vk = VARLIK ANAHTARI. Botun sablon gorselleri ve yapboz beyni bu anahtarla
  * sifreli paketlenir; anahtar olmadan cozulemezler. Eyl 2026'daki kirilmadan
@@ -44,13 +51,28 @@ export async function POST(req) {
     return yanit({ ok: false, sebep: 'gecersiz', kalan_sn: 0 });
   }
 
+  const ip = ipAl(req.headers);
+  const kaydet = (sebep, ayrinti = '') => sizmaKaydet({ ip, sebep, anahtar, hwid, ayrinti });
+
   try {
     await tablolariHazirla();
 
+    const engel = await engelliMi(ip, hwid, anahtar);
+    if (engel) {
+      await sizmaKaydet({ ip, sebep: 'engelli', ayrinti: 'engel: ' + engel });
+      return yanit({ ok: false, sebep: 'engelli', kalan_sn: 0 });
+    }
+
     const { rows } = await sql`SELECT * FROM lisanslar WHERE anahtar = ${anahtar} LIMIT 1`;
     const l = rows[0];
-    if (!l) return yanit({ ok: false, sebep: 'gecersiz', kalan_sn: 0 });
-    if (l.iptal) return yanit({ ok: false, sebep: 'iptal', kalan_sn: 0 });
+    if (!l) {
+      await kaydet('gecersiz');
+      return yanit({ ok: false, sebep: 'gecersiz', kalan_sn: 0 });
+    }
+    if (l.iptal) {
+      await kaydet('iptal', l.musteri || '');
+      return yanit({ ok: false, sebep: 'iptal', kalan_sn: 0 });
+    }
 
     // --- Ilk kullanim: sure SIMDI baslar ---
     let bitis = l.bitis ? new Date(l.bitis) : null;
@@ -69,7 +91,10 @@ export async function POST(req) {
     }
 
     const kalanSn = Math.floor((bitis.getTime() - Date.now()) / 1000);
-    if (kalanSn <= 0) return yanit({ ok: false, sebep: 'suresi_doldu', kalan_sn: 0 });
+    if (kalanSn <= 0) {
+      await kaydet('suresi_doldu', l.musteri || '');
+      return yanit({ ok: false, sebep: 'suresi_doldu', kalan_sn: 0 });
+    }
 
     // --- Cihaz limiti ---
     const { rows: mevcut } = await sql`
@@ -90,6 +115,7 @@ export async function POST(req) {
         if (olu.length) {
           await sql`DELETE FROM cihazlar WHERE id = ${olu[0].id}`;
         } else {
+          await kaydet('cihaz_limiti', (l.musteri || '') + ' ' + say[0].n + '/' + l.max_cihaz);
           return yanit({
             ok: false,
             sebep: 'cihaz_limiti',
