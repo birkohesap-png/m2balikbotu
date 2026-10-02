@@ -72,6 +72,12 @@ export async function PATCH(req, { params }) {
          WHERE id = ${id}`;
       break;
     }
+    case 'haftasonu': {
+      // (KULLANICI ISTEGI 2 Eki 2026) Key'i hafta sonu kisitindan muaf yap/kaldir.
+      const serbest = !!g.serbest;
+      await sql`UPDATE lisanslar SET haftasonu_serbest = ${serbest} WHERE id = ${id}`;
+      break;
+    }
     case 'limitSifirla':
       // Gunluk sayaci sifirla (dinlenmeyi de kaldirir). Belirli bir cihaz icin
       // hwid gelirse sadece onu, gelmezse key'in tum cihazlarini sifirlar.

@@ -516,6 +516,12 @@ export default function Admin() {
                               <button onClick={() => islem(l.id, { islem: 'limitSifirla' })} style={S.mini}>
                                 Tüm sayaçları sıfırla
                               </button>
+                              <button
+                                onClick={() => islem(l.id, { islem: 'haftasonu', serbest: !l.haftasonu_serbest })}
+                                style={l.haftasonu_serbest ? { ...S.mini, ...S.miniKirmizi } : S.mini}
+                                title="Hafta sonu kısıtı (Cmt 12:50-17:45 / Paz kapalı) bu key için">
+                                {l.haftasonu_serbest ? '🟢 Hafta sonu: SERBEST' : '⛔ Hafta sonu: kısıtlı'}
+                              </button>
                             </div>
                             <div style={{ display: 'flex', gap: 8, marginTop: 10, flexWrap: 'wrap' }}>
                               <button

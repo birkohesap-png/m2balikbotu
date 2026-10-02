@@ -125,6 +125,9 @@ export async function POST(req) {
       // Gunluk calisma limiti (saat). 0 = kapali. Bot acilis uyarisinda kullanir;
       // asil sayac /api/durum'da tutulur.
       gunluk_limit: Number.isFinite(Number(l.gunluk_limit_saat)) ? Number(l.gunluk_limit_saat) : 14,
+      // (KULLANICI ISTEGI) Key hafta sonu kisitindan muaf mi? Bot bunu okuyup
+      // muafsa hafta sonu kisitini uygulamaz.
+      haftasonu_serbest: !!l.haftasonu_serbest,
     });
   } catch (e) {
     return yanit({ ok: false, sebep: 'hata', mesaj: String(e.message || e) }, 500);
