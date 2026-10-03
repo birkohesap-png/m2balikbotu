@@ -216,10 +216,79 @@ class Makro(threading.Thread):
 # ---------------------------------------------------------------------------
 # Arayuz
 # ---------------------------------------------------------------------------
+RENK = {
+    "zemin": "#111318", "kart": "#1b1e26", "kart2": "#242833", "kenar": "#2e3340",
+    "yazi": "#e8eaf0", "soluk": "#8a90a0", "vurgu": "#f5b81c",
+    "yesil": "#22c55e", "yesil2": "#16a34a", "kirmizi": "#ef4444", "kirmizi2": "#dc2626",
+}
+FONT = "Segoe UI"
+
+
+def _dpi_ayarla():
+    try:
+        ctypes.windll.shcore.SetProcessDpiAwareness(1)
+    except Exception:
+        pass
+
+
+class TusKarti(tk.Frame):
+    """Tiklayinca acilip kapanan tus kutusu + altinda saniye girisi."""
+
+    def __init__(self, ust, ad, acik_var, sure_var, tikla_cb):
+        super().__init__(ust, bg=RENK["kart2"], highlightthickness=2,
+                         highlightbackground=RENK["kenar"], cursor="hand2")
+        self.acik_var = acik_var
+        self.ad_lbl = tk.Label(self, text=ad, font=(FONT, 15, "bold"),
+                               bg=RENK["kart2"], fg=RENK["soluk"], width=4, cursor="hand2")
+        self.ad_lbl.pack(pady=(8, 2))
+        alt = tk.Frame(self, bg=RENK["kart2"])
+        alt.pack(pady=(0, 8))
+        self.giris = tk.Entry(alt, textvariable=sure_var, width=5, justify="center",
+                              font=(FONT, 10), bg=RENK["zemin"], fg=RENK["yazi"],
+                              insertbackground=RENK["yazi"], relief="flat",
+                              highlightthickness=1, highlightbackground=RENK["kenar"],
+                              highlightcolor=RENK["vurgu"])
+        self.giris.pack(side="left", ipady=2)
+        self.sn_lbl = tk.Label(alt, text="sn", font=(FONT, 9), bg=RENK["kart2"], fg=RENK["soluk"])
+        self.sn_lbl.pack(side="left", padx=(3, 0))
+        for w in (self, self.ad_lbl):
+            w.bind("<Button-1>", lambda e: tikla_cb())
+        acik_var.trace_add("write", lambda *_: self.boya())
+        self.boya()
+
+    def boya(self):
+        acik = self.acik_var.get()
+        self.configure(highlightbackground=RENK["vurgu"] if acik else RENK["kenar"])
+        self.ad_lbl.configure(fg=RENK["vurgu"] if acik else RENK["soluk"])
+
+
+class Anahtar(tk.Canvas):
+    """Basit acik/kapali anahtari (toggle switch)."""
+
+    def __init__(self, ust, var, bg):
+        super().__init__(ust, width=40, height=22, bg=bg, highlightthickness=0, cursor="hand2")
+        self.var = var
+        self.bind("<Button-1>", lambda e: self.var.set(not self.var.get()))
+        var.trace_add("write", lambda *_: self.ciz())
+        self.ciz()
+
+    def ciz(self):
+        self.delete("all")
+        acik = self.var.get()
+        renk = RENK["yesil"] if acik else RENK["kenar"]
+        self.create_oval(1, 1, 21, 21, fill=renk, outline=renk)
+        self.create_oval(19, 1, 39, 21, fill=renk, outline=renk)
+        self.create_rectangle(11, 1, 29, 21, fill=renk, outline=renk)
+        x = 20 if acik else 2
+        self.create_oval(x + 1, 3, x + 17, 19, fill="#ffffff", outline="")
+
+
 class Uygulama(tk.Tk):
     def __init__(self):
+        _dpi_ayarla()
         super().__init__()
         self.title("K34 Makro")
+        self.configure(bg=RENK["zemin"])
         self.resizable(False, False)
         self.attributes("-topmost", True)
 
@@ -230,67 +299,147 @@ class Uygulama(tk.Tk):
         self.space_var = tk.BooleanVar()
         self.arka_plan_var = tk.BooleanVar(value=True)
         self.tum_pencereler_var = tk.BooleanVar()
-        self.durum_var = tk.StringVar(value="Hazir. Client sec, tuslari ayarla, Baslat'a bas.")
+        self.ustte_var = tk.BooleanVar(value=True)
+        self.durum_var = tk.StringVar(value="Hazır — client seç, tuşları ayarla, Başlat'a bas.")
         self._f10_onceki = False
 
+        self._stil()
         self._arayuz()
         self._ayar_yukle()
+        self.ustte_var.trace_add("write", lambda *_: self.attributes("-topmost", self.ustte_var.get()))
+        self.tum_pencereler_var.trace_add("write", lambda *_: self.yenile())
         self.yenile()
         self.after(100, self._kisayol_kontrol)
         self.protocol("WM_DELETE_WINDOW", self._kapat)
 
     # --- arayuz kurulumu ---
+    def _stil(self):
+        s = ttk.Style(self)
+        s.theme_use("clam")
+        s.configure("K.TCombobox", fieldbackground=RENK["kart2"], background=RENK["kart2"],
+                    foreground=RENK["yazi"], arrowcolor=RENK["vurgu"], bordercolor=RENK["kenar"],
+                    lightcolor=RENK["kart2"], darkcolor=RENK["kart2"], padding=6)
+        s.map("K.TCombobox",
+              fieldbackground=[("readonly", RENK["kart2"]), ("disabled", RENK["kart"])],
+              foreground=[("readonly", RENK["yazi"]), ("disabled", RENK["soluk"])],
+              selectbackground=[("readonly", RENK["kart2"])],
+              selectforeground=[("readonly", RENK["yazi"])])
+        self.option_add("*TCombobox*Listbox.background", RENK["kart2"])
+        self.option_add("*TCombobox*Listbox.foreground", RENK["yazi"])
+        self.option_add("*TCombobox*Listbox.selectBackground", RENK["vurgu"])
+        self.option_add("*TCombobox*Listbox.selectForeground", "#000000")
+        self.option_add("*TCombobox*Listbox.font", (FONT, 10))
+
+    def _kart(self, baslik):
+        dis = tk.Frame(self, bg=RENK["kart"], highlightthickness=1,
+                       highlightbackground=RENK["kenar"])
+        dis.pack(fill="x", padx=14, pady=(0, 10))
+        tk.Label(dis, text=baslik, font=(FONT, 9, "bold"), bg=RENK["kart"],
+                 fg=RENK["soluk"]).pack(anchor="w", padx=12, pady=(10, 4))
+        ic = tk.Frame(dis, bg=RENK["kart"])
+        ic.pack(fill="x", padx=12, pady=(0, 12))
+        return ic
+
+    def _satir_anahtar(self, ust, yazi, var):
+        f = tk.Frame(ust, bg=RENK["kart"])
+        f.pack(fill="x", pady=3)
+        Anahtar(f, var, RENK["kart"]).pack(side="left")
+        lbl = tk.Label(f, text=yazi, font=(FONT, 10), bg=RENK["kart"], fg=RENK["yazi"],
+                       cursor="hand2")
+        lbl.pack(side="left", padx=8)
+        lbl.bind("<Button-1>", lambda e: var.set(not var.get()))
+
+    def _buton(self, ust, yazi, komut, renk, renk2, fg="#ffffff", **kw):
+        b = tk.Label(ust, text=yazi, bg=renk, fg=fg, cursor="hand2", **kw)
+        b.bind("<Button-1>", lambda e: komut())
+        b.bind("<Enter>", lambda e: b.configure(bg=b.renk2))
+        b.bind("<Leave>", lambda e: b.configure(bg=b.renk))
+        b.renk, b.renk2 = renk, renk2
+        return b
+
     def _arayuz(self):
-        p = {"padx": 6, "pady": 4}
+        # Baslik
+        bas = tk.Frame(self, bg=RENK["zemin"])
+        bas.pack(fill="x", padx=14, pady=(14, 10))
+        tk.Label(bas, text="K34", font=(FONT, 20, "bold"), bg=RENK["zemin"],
+                 fg=RENK["vurgu"]).pack(side="left")
+        tk.Label(bas, text=" MAKRO", font=(FONT, 20, "bold"), bg=RENK["zemin"],
+                 fg=RENK["yazi"]).pack(side="left")
+        self.rozet = tk.Label(bas, text="● DURDU", font=(FONT, 9, "bold"),
+                              bg=RENK["kart2"], fg=RENK["soluk"], padx=10, pady=3)
+        self.rozet.pack(side="right")
 
-        cf = ttk.LabelFrame(self, text="Client Secimi")
-        cf.grid(row=0, column=0, sticky="ew", **p)
-        self.client_cb = ttk.Combobox(cf, state="readonly", width=42)
-        self.client_cb.grid(row=0, column=0, **p)
-        ttk.Button(cf, text="Yenile", command=self.yenile).grid(row=0, column=1, **p)
-        ttk.Checkbutton(cf, text="Tum pencereleri goster (Metin2 adi farkliysa)",
-                        variable=self.tum_pencereler_var,
-                        command=self.yenile).grid(row=1, column=0, columnspan=2, sticky="w", padx=6)
-        ttk.Checkbutton(cf, text="Arka planda calis (client ondeyken olmasa da basar)",
-                        variable=self.arka_plan_var).grid(row=2, column=0, columnspan=2, sticky="w", padx=6)
+        # Client
+        c = self._kart("CLIENT")
+        ust = tk.Frame(c, bg=RENK["kart"])
+        ust.pack(fill="x")
+        self.client_cb = ttk.Combobox(ust, state="readonly", style="K.TCombobox",
+                                      font=(FONT, 10), width=36)
+        self.client_cb.pack(side="left", fill="x", expand=True)
+        self._buton(ust, "⟳", self.yenile, RENK["kart2"], RENK["kenar"], fg=RENK["vurgu"],
+                    font=(FONT, 13, "bold"), padx=10, pady=2).pack(side="left", padx=(8, 0))
+        tk.Frame(c, bg=RENK["kart"], height=6).pack()
+        self._satir_anahtar(c, "Arka planda çalış (client önde olmasa da basar)", self.arka_plan_var)
+        self._satir_anahtar(c, "Tüm pencereleri göster", self.tum_pencereler_var)
 
-        tf = ttk.LabelFrame(self, text="Tuslar  (kutuyu isaretle, kac saniyede bir basilacagini yaz)")
-        tf.grid(row=1, column=0, sticky="ew", **p)
+        # Tuslar
+        t = self._kart("TUŞLAR  —  tıkla, kaç saniyede bir basacağını yaz")
+        izgara = tk.Frame(t, bg=RENK["kart"])
+        izgara.pack()
         for i, ad in enumerate(TUSLAR):
-            satir, sutun = i % 6, (i // 6) * 3
-            ttk.Checkbutton(tf, text=ad, width=4, variable=self.tus_acik[ad],
-                            command=lambda a=ad: self._tus_degisti(a)
-                            ).grid(row=satir, column=sutun, sticky="w", padx=(8, 0), pady=2)
-            ttk.Entry(tf, width=7, textvariable=self.tus_sure[ad]
-                      ).grid(row=satir, column=sutun + 1, pady=2)
-            ttk.Label(tf, text="sn").grid(row=satir, column=sutun + 2, sticky="w", padx=(2, 14))
+            TusKarti(izgara, ad, self.tus_acik[ad], self.tus_sure[ad],
+                     lambda a=ad: self._tus_tikla(a)
+                     ).grid(row=i // 6, column=i % 6, padx=4, pady=4)
 
-        sf = ttk.LabelFrame(self, text="Space")
-        sf.grid(row=2, column=0, sticky="ew", **p)
-        ttk.Checkbutton(sf, text="Space'i surekli basili tut (otomatik vurus)",
-                        variable=self.space_var).grid(row=0, column=0, sticky="w", **p)
+        # Space
+        s = self._kart("SPACE")
+        self._satir_anahtar(s, "Space'i sürekli basılı tut (otomatik vuruş)", self.space_var)
 
-        bf = ttk.Frame(self)
-        bf.grid(row=3, column=0, sticky="ew", **p)
-        self.baslat_btn = ttk.Button(bf, text="BASLAT  (F10)", command=self.baslat)
-        self.baslat_btn.pack(side="left", expand=True, fill="x", padx=3)
-        self.durdur_btn = ttk.Button(bf, text="DURDUR  (F10)", command=self.durdur, state="disabled")
-        self.durdur_btn.pack(side="left", expand=True, fill="x", padx=3)
+        # Baslat/Durdur
+        self.ana_btn = self._buton(self, "▶  BAŞLAT   (F10)", self._ana_tikla, RENK["yesil2"], RENK["yesil"],
+                                   font=(FONT, 14, "bold"), pady=12)
+        self.ana_btn.pack(fill="x", padx=14, pady=(2, 8))
 
-        ttk.Label(self, textvariable=self.durum_var, foreground="#555",
-                  wraplength=380).grid(row=4, column=0, sticky="w", padx=8, pady=(0, 8))
+        alt = tk.Frame(self, bg=RENK["zemin"])
+        alt.pack(fill="x", padx=14, pady=(0, 12))
+        tk.Label(alt, textvariable=self.durum_var, font=(FONT, 9), bg=RENK["zemin"],
+                 fg=RENK["soluk"], anchor="w").pack(side="left")
+        ustte = tk.Frame(alt, bg=RENK["zemin"])
+        ustte.pack(side="right")
+        tk.Label(ustte, text="Üstte tut", font=(FONT, 9),
+                 bg=RENK["zemin"], fg=RENK["soluk"]).pack(side="left", padx=(0, 6))
+        Anahtar(ustte, self.ustte_var, RENK["zemin"]).pack(side="left")
 
-    def _tus_degisti(self, ad):
-        """Kutu isaretlenince sure bossa kullaniciya sor."""
-        if not self.tus_acik[ad].get() or self.tus_sure[ad].get().strip():
+    def _tus_tikla(self, ad):
+        if self.makro:
             return
-        sure = simpledialog.askfloat(
-            "Sure", f"{ad} tusuna kac saniyede bir bassin kanka?",
-            parent=self, minvalue=0.1, maxvalue=86400)
-        if sure is None:
+        if self.tus_acik[ad].get():
             self.tus_acik[ad].set(False)
-        else:
+            return
+        if not self.tus_sure[ad].get().strip():
+            sure = simpledialog.askfloat(
+                "K34 Makro", f"{ad} tuşuna kaç saniyede bir bassın kanka?",
+                parent=self, minvalue=0.1, maxvalue=86400)
+            if sure is None:
+                return
             self.tus_sure[ad].set(f"{sure:g}")
+        self.tus_acik[ad].set(True)
+
+    def _ana_tikla(self):
+        self.durdur() if self.makro else self.baslat()
+
+    def _calisiyor_gorunumu(self, calisiyor):
+        b = self.ana_btn
+        if calisiyor:
+            b.renk, b.renk2 = RENK["kirmizi2"], RENK["kirmizi"]
+            b.configure(text="■  DURDUR   (F10)", bg=b.renk)
+            self.rozet.configure(text="● ÇALIŞIYOR", fg=RENK["yesil"])
+            self.client_cb["state"] = "disabled"
+        else:
+            b.renk, b.renk2 = RENK["yesil2"], RENK["yesil"]
+            b.configure(text="▶  BAŞLAT   (F10)", bg=b.renk)
+            self.rozet.configure(text="● DURDU", fg=RENK["soluk"])
+            self.client_cb["state"] = "readonly"
 
     # --- client listesi ---
     def yenile(self):
@@ -305,7 +454,7 @@ class Uygulama(tk.Tk):
             self.client_cb.current(0)
         else:
             self.client_cb.set("")
-            self.durum_var.set("Metin2 client bulunamadi. Oyunu ac ve Yenile'ye bas.")
+            self.durum_var.set("Metin2 client bulunamadı — oyunu aç ve ⟳'ye bas.")
 
     def _secili_hwnd(self):
         i = self.client_cb.current()
@@ -317,7 +466,7 @@ class Uygulama(tk.Tk):
             return
         hwnd = self._secili_hwnd()
         if not hwnd or not user32.IsWindow(hwnd):
-            messagebox.showwarning("K34 Makro", "Once bir Metin2 client sec.", parent=self)
+            messagebox.showwarning("K34 Makro", "Önce bir Metin2 client seç.", parent=self)
             return
         araliklar = {}
         for ad in TUSLAR:
@@ -328,12 +477,12 @@ class Uygulama(tk.Tk):
                 if sure < 0.1:
                     raise ValueError
             except ValueError:
-                messagebox.showwarning("K34 Makro", f"{ad} icin gecerli bir saniye gir (en az 0.1).",
+                messagebox.showwarning("K34 Makro", f"{ad} için geçerli bir saniye gir (en az 0.1).",
                                        parent=self)
                 return
             araliklar[ad] = sure
         if not araliklar and not self.space_var.get():
-            messagebox.showwarning("K34 Makro", "En az bir tus ya da Space sec.", parent=self)
+            messagebox.showwarning("K34 Makro", "En az bir tuş ya da Space seç.", parent=self)
             return
 
         arka_plan = self.arka_plan_var.get()
@@ -344,19 +493,15 @@ class Uygulama(tk.Tk):
         self._ayar_kaydet()
         self.makro = Makro(Gonderici(hwnd, arka_plan), araliklar, self.space_var.get(), self._durum)
         self.makro.start()
-        self.baslat_btn["state"] = "disabled"
-        self.durdur_btn["state"] = "normal"
-        self.client_cb["state"] = "disabled"
-        self.durum_var.set("Calisiyor...")
+        self._calisiyor_gorunumu(True)
+        self.durum_var.set("Çalışıyor...")
 
     def durdur(self):
         if self.makro:
             self.makro.durdur()
             self.makro.join(timeout=1)
             self.makro = None
-        self.baslat_btn["state"] = "normal"
-        self.durdur_btn["state"] = "disabled"
-        self.client_cb["state"] = "readonly"
+        self._calisiyor_gorunumu(False)
         self.durum_var.set("Durduruldu.")
 
     def _durum(self, mesaj, bitti=False):
@@ -370,7 +515,7 @@ class Uygulama(tk.Tk):
     def _kisayol_kontrol(self):
         basili = bool(user32.GetAsyncKeyState(KISAYOL_VK) & 0x8000)
         if basili and not self._f10_onceki:
-            self.durdur() if self.makro else self.baslat()
+            self._ana_tikla()
         self._f10_onceki = basili
         self.after(50, self._kisayol_kontrol)
 
@@ -381,6 +526,7 @@ class Uygulama(tk.Tk):
                        for ad in TUSLAR},
             "space": self.space_var.get(),
             "arka_plan": self.arka_plan_var.get(),
+            "ustte": self.ustte_var.get(),
         }
         try:
             with open(AYAR_DOSYASI, "w", encoding="utf-8") as f:
@@ -400,6 +546,8 @@ class Uygulama(tk.Tk):
                 self.tus_sure[ad].set(str(t.get("sure", "")))
         self.space_var.set(bool(veri.get("space")))
         self.arka_plan_var.set(bool(veri.get("arka_plan", True)))
+        self.ustte_var.set(bool(veri.get("ustte", True)))
+        self.attributes("-topmost", self.ustte_var.get())
 
     def _kapat(self):
         self.durdur()

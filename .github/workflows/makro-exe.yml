@@ -1,0 +1,26 @@
+name: K34 Makro EXE
+
+on:
+  push:
+    paths:
+      - "makro/**"
+      - ".github/workflows/makro-exe.yml"
+  workflow_dispatch:
+
+jobs:
+  derle:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: PyInstaller kur
+        run: pip install pyinstaller
+      - name: EXE derle
+        working-directory: makro
+        run: pyinstaller --onefile --noconsole --name K34Makro k34_makro.py
+      - uses: actions/upload-artifact@v4
+        with:
+          name: K34Makro
+          path: makro/dist/K34Makro.exe
