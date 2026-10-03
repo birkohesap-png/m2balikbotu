@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { sql, tablolariHazirla } from '@/lib/db';
 import { lisansDogrula } from '@/lib/telegram';
 import { limitHesapla } from '@/lib/limit';
+import { botUrunu, urunKurallari } from '@/lib/urun';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -68,9 +69,15 @@ export async function POST(req) {
     // --- Gunluk calisma limiti (16 saat aktif -> 8 saat dinlenme) ---
     // Key'e bagli, admin ayarlar. Sayac SUNUCUDA (kullanim tablosu) tutulur;
     // bot kapatilip acilinca sifirlanmaz.
+    // (3 Eki 2026) PvP anahtarinda / PvP botunda gunluk limit YOK (limitSaat 0
+    // -> limitHesapla kapali doner; bot PC'yi kapatmaz). bkz. lib/urun.js
     let limit = { aktif: false };
     try {
-      const limitSaat = Number(l.gunluk_limit_saat);
+      const limitSaat = urunKurallari({
+        lisansUrun: l.urun,
+        botUrun: botUrunu(req.headers.get('user-agent')),
+        limitSaat: l.gunluk_limit_saat,
+      }).limitSaat;
       const { rows: kr } = await sql`
         SELECT donem_sn, dinlenme_bitis, guncelleme FROM kullanim
          WHERE lisans_id = ${l.id} AND hwid = ${hwid}`;

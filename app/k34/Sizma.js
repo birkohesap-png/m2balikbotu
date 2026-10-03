@@ -9,6 +9,7 @@ const SEBEP_AD = {
   cihaz_limiti: 'Cihaz limiti',
   engelli: 'Engelliyken deneme',
   sahte_modul: '🛡️ KALKAN İHLALİ',
+  urun_uyumsuz: 'Yanlış bot (TR/PvP)',
 };
 
 const tarih = (t) =>

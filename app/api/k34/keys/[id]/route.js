@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { sql, tablolariHazirla } from '@/lib/db';
 import { adminMi } from '@/lib/auth';
+import { lisansUrunNormal } from '@/lib/urun';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -70,6 +71,12 @@ export async function PATCH(req, { params }) {
                max_cihaz = ${cihaz},
                gunluk_limit_saat = ${Number.isFinite(limit) ? limit : 14}
          WHERE id = ${id}`;
+      break;
+    }
+    case 'urun': {
+      // (3 Eki 2026) Anahtarin calisacagi bot: 'tr' | 'pvp' | '' (secilmemis = ikisi).
+      const urun = lisansUrunNormal(g.urun);
+      await sql`UPDATE lisanslar SET urun = ${urun} WHERE id = ${id}`;
       break;
     }
     case 'haftasonu': {

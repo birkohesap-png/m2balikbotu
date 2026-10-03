@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { sql, tablolariHazirla, engelliMi, sizmaKaydet } from '@/lib/db';
 import { lisansJetonu } from '@/lib/auth';
 import { ipAl } from '@/lib/sizma';
+import { botUrunu, urunUyumlu, urunKurallari, LISANS_URUN_AD } from '@/lib/urun';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -18,7 +19,11 @@ export async function OPTIONS() {
  * POST { anahtar, hwid, surum? }
  * ->   { ok, sebep, kalan_sn, paket, max_cihaz, cihaz_sayisi, jeton, vk }
  *
- * sebep: gecerli | gecersiz | iptal | suresi_doldu | cihaz_limiti | engelli | hata
+ * sebep: gecerli | gecersiz | iptal | suresi_doldu | cihaz_limiti | engelli | urun_uyumsuz | hata
+ *
+ * TR / PvP (3 Eki 2026): anahtarin urunu ('tr'|'pvp'|'' secilmemis) botun
+ * User-Agent'iyla karsilastirilir; uyusmazsa 'urun_uyumsuz' (sure BASLAMAZ).
+ * PvP'de gunluk limit 0 ve hafta sonu serbest doner (lib/urun.js urunKurallari).
  *
  * SIZMA TESPITI (2 Eki 2026): her basarisiz deneme IP'siyle `sizma` tablosuna
  * yazilir (panel -> Sizma Girisimleri). Panelden engellenen IP/HWID/anahtar
@@ -53,6 +58,8 @@ export async function POST(req) {
 
   const ip = ipAl(req.headers);
   const kaydet = (sebep, ayrinti = '') => sizmaKaydet({ ip, sebep, anahtar, hwid, ayrinti });
+  // Istegi yapan bot TR mi PvP mi (User-Agent: 'K34/..' | 'K34PvP/..').
+  const botUrun = botUrunu(req.headers.get('user-agent'));
 
   try {
     await tablolariHazirla();
@@ -73,6 +80,19 @@ export async function POST(req) {
       await kaydet('iptal', l.musteri || '');
       return yanit({ ok: false, sebep: 'iptal', kalan_sn: 0 });
     }
+
+    // --- TR / PvP ayrimi --- AKTIVASYONDAN ONCE: yanlis botta denenen anahtarin
+    // suresi baslamamali. Secilmemis ('') anahtar iki botta da calisir.
+    if (!urunUyumlu(l.urun, botUrun)) {
+      await kaydet('urun_uyumsuz', `anahtar ${LISANS_URUN_AD[l.urun]}, bot ${LISANS_URUN_AD[botUrun]}`);
+      return yanit({ ok: false, sebep: 'urun_uyumsuz', kalan_sn: 0, urun: l.urun });
+    }
+    const kural = urunKurallari({
+      lisansUrun: l.urun,
+      botUrun,
+      limitSaat: l.gunluk_limit_saat,
+      haftasonuSerbest: l.haftasonu_serbest,
+    });
 
     // --- Ilk kullanim: sure SIMDI baslar ---
     let bitis = l.bitis ? new Date(l.bitis) : null;
@@ -132,7 +152,7 @@ export async function POST(req) {
       await sql`UPDATE cihazlar SET son = NOW() WHERE id = ${mevcut[0].id}`;
     }
 
-    await sql`UPDATE lisanslar SET son_gorulme = NOW() WHERE id = ${l.id}`;
+    await sql`UPDATE lisanslar SET son_gorulme = NOW(), son_urun = ${botUrun} WHERE id = ${l.id}`;
 
     const { rows: say2 } = await sql`
       SELECT COUNT(*)::int AS n FROM cihazlar WHERE lisans_id = ${l.id}`;
@@ -150,10 +170,12 @@ export async function POST(req) {
       vk: process.env.K34_VARLIK_ANAHTARI || undefined,
       // Gunluk calisma limiti (saat). 0 = kapali. Bot acilis uyarisinda kullanir;
       // asil sayac /api/durum'da tutulur.
-      gunluk_limit: Number.isFinite(Number(l.gunluk_limit_saat)) ? Number(l.gunluk_limit_saat) : 14,
+      // Gunluk limit + hafta sonu muafiyeti ETKIN URUNE gore: PvP'de ikisi de yok.
+      gunluk_limit: kural.limitSaat,
       // (KULLANICI ISTEGI) Key hafta sonu kisitindan muaf mi? Bot bunu okuyup
       // muafsa hafta sonu kisitini uygulamaz.
-      haftasonu_serbest: !!l.haftasonu_serbest,
+      haftasonu_serbest: kural.haftasonuSerbest,
+      urun: kural.urun,
     });
   } catch (e) {
     return yanit({ ok: false, sebep: 'hata', mesaj: String(e.message || e) }, 500);

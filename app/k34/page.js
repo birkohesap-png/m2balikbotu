@@ -34,6 +34,17 @@ function sureKisa(sn) {
 }
 
 /** Bir cihazin gunluk limit durumu (calisma / dinlenme). */
+// TR / PvP / secilmemis rozeti (tablo, sayaclar ve detay butonlari)
+function urunRozet(u) {
+  const renk =
+    u === 'pvp'
+      ? { color: '#ff9f43', borderColor: 'rgba(255,159,67,.45)', background: 'rgba(255,159,67,.1)' }
+      : u === 'tr'
+        ? { color: '#f9e39c', borderColor: 'rgba(231,193,99,.4)', background: 'rgba(231,193,99,.1)' }
+        : { color: 'var(--gri2)', borderColor: 'rgba(255,255,255,.12)', background: 'transparent' };
+  return { display: 'inline-block', fontSize: 11, fontWeight: 800, padding: '2px 8px', borderRadius: 6, border: '1px solid', ...renk };
+}
+
 function limitDurum(c, limitSaat) {
   if (!limitSaat || limitSaat <= 0) return { yazi: 'sınırsız', renk: 'var(--gri2)' };
   const kullanilan = c.donem_sn || 0;
@@ -54,7 +65,7 @@ export default function Admin() {
   const [liste, setListe] = useState([]);
   const [ist, setIst] = useState({});
   const [ara, setAra] = useState('');
-  const [yeni, setYeni] = useState({ paket: 'gunluk', adet: 1, musteri: '', aciklama: '' });
+  const [yeni, setYeni] = useState({ urun: 'tr', paket: 'gunluk', adet: 1, musteri: '', aciklama: '' });
   const [uretilen, setUretilen] = useState([]);
   const [acik, setAcik] = useState(null);
   const [cihazlar, setCihazlar] = useState([]);
@@ -142,8 +153,21 @@ export default function Admin() {
       setUretilen(d.anahtarlar);
       setYeni({ ...yeni, adet: 1, musteri: '', aciklama: '' });
       yukle(ara);
-      bildir(d.anahtarlar.length + ' anahtar üretildi');
+      bildir(d.anahtarlar.length + ' ' + (d.urun === 'pvp' ? 'PvP' : 'TR') + ' anahtarı üretildi');
     }
+  }
+
+  // TOPLU islem (tum anahtarlar): hafta sonu hepsi / secilmemisleri otomatik ata.
+  async function toplu(govde, soru) {
+    if (!confirm(soru)) return;
+    const r = await fetch('/api/k34/keys', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(govde),
+    });
+    const d = await r.json().catch(() => ({}));
+    bildir(d.mesaj || (d.ok ? 'Tamam' : 'Başarısız'));
+    yukle(ara);
   }
 
   async function islem(id, govde) {
@@ -272,6 +296,17 @@ export default function Admin() {
           <h2 style={S.h2}>Yeni Anahtar Üret</h2>
           <div style={S.form}>
             <label style={S.lbl}>
+              Ürün (hangi bot)
+              <select
+                value={yeni.urun}
+                onChange={(e) => setYeni({ ...yeni, urun: e.target.value })}
+                style={{ ...S.input, ...(yeni.urun === 'pvp' ? { borderColor: 'rgba(255,159,67,.55)' } : {}) }}
+              >
+                <option value="tr">K34 TR</option>
+                <option value="pvp">K34 PvP</option>
+              </select>
+            </label>
+            <label style={S.lbl}>
               Paket
               <select
                 value={yeni.paket}
@@ -353,11 +388,48 @@ export default function Admin() {
             />
           </div>
 
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center', marginBottom: 14 }}>
+            <span style={S.bilgi}>
+              <span style={urunRozet('tr')}>TR</span> <b>{ist.tr ?? 0}</b> ·{' '}
+              <span style={urunRozet('pvp')}>PvP</span> <b>{ist.pvp ?? 0}</b> ·{' '}
+              <span style={urunRozet('')}>Seçilmemiş</span> <b>{ist.secilmemis ?? 0}</b> · Hafta sonu serbest:{' '}
+              <b>{ist.haftasonu_serbest ?? 0}</b>
+            </span>
+            <button
+              onClick={() => toplu({ islem: 'haftasonuHepsi', serbest: true }, 'TÜM anahtarlarda hafta sonu kısıtı KALDIRILSIN mı?')}
+              style={{ ...S.mini, marginLeft: 'auto' }}
+            >
+              🟢 Tüm keylerde hafta sonu SERBEST
+            </button>
+            <button
+              onClick={() => toplu({ islem: 'haftasonuHepsi', serbest: false }, 'TÜM anahtarlarda hafta sonu kısıtı GERİ GETİRİLSİN mi?')}
+              style={{ ...S.mini, ...S.miniKirmizi }}
+            >
+              ⛔ Tüm keylerde KISITLA
+            </button>
+            {ist.atanabilir > 0 && (
+              <button
+                onClick={() =>
+                  toplu(
+                    { islem: 'urunOtomatik' },
+                    ist.atanabilir +
+                      ' seçilmemiş anahtar, en son görüldüğü bota göre TR / PvP olarak atansın mı?\n\n' +
+                      'Atandıktan sonra o anahtar yalnızca kendi botunda çalışır.'
+                  )
+                }
+                style={S.mini}
+                title="Seçilmemiş anahtarları en son hangi botta açıldıysa ona ata"
+              >
+                🔀 Seçilmemişleri otomatik ata ({ist.atanabilir})
+              </button>
+            )}
+          </div>
+
           <div style={{ overflowX: 'auto' }}>
             <table style={S.tablo}>
               <thead>
                 <tr>
-                  {['Anahtar', 'Paket', 'Cihaz', 'Kalan', 'Müşteri', 'Üretim', 'İşlem'].map((b) => (
+                  {['Anahtar', 'Ürün', 'Paket', 'Cihaz', 'Kalan', 'Müşteri', 'Üretim', 'İşlem'].map((b) => (
                     <th key={b} style={S.th}>
                       {b}
                     </th>
@@ -374,6 +446,14 @@ export default function Admin() {
                           <code onClick={() => kopyala(l.anahtar)} style={{ ...S.kod, margin: 0 }}>
                             {l.anahtar}
                           </code>
+                        </td>
+                        <td style={{ ...S.td, whiteSpace: 'nowrap' }}>
+                          <span style={urunRozet(l.urun)}>{l.urun === 'pvp' ? 'PvP' : l.urun === 'tr' ? 'TR' : '—'}</span>
+                          {!l.urun && l.son_urun && (
+                            <span style={{ fontSize: 10.5, color: 'var(--gri2)', marginLeft: 5 }} title="Seçilmemiş — en son görüldüğü bot">
+                              ({l.son_urun === 'pvp' ? 'PvP' : 'TR'}?)
+                            </span>
+                          )}
                         </td>
                         <td style={S.td}>{l.paket}</td>
                         <td style={S.td}>
@@ -409,7 +489,7 @@ export default function Admin() {
                       </tr>
                       {acik === l.id && (
                         <tr>
-                          <td colSpan="7" style={S.detay}>
+                          <td colSpan="8" style={S.detay}>
                             <div style={{ display: 'flex', gap: 20, flexWrap: 'wrap', marginBottom: 12 }}>
                               <span style={S.bilgi}>
                                 <b>Aktivasyon:</b> {tarih(l.aktivasyon)}
@@ -433,7 +513,7 @@ export default function Admin() {
                               <div style={{ color: 'var(--gri2)', fontSize: 12.5 }}>Henüz hiçbir bilgisayarda açılmamış.</div>
                             )}
                             {cihazlar.map((c) => {
-                              const ld = limitDurum(c, l.gunluk_limit_saat);
+                              const ld = limitDurum(c, l.urun === 'pvp' ? 0 : l.gunluk_limit_saat);
                               return (
                               <div key={c.id} style={S.cihaz}>
                                 <code style={{ fontSize: 11.5, color: 'var(--altin2)' }}>{c.hwid}</code>
@@ -523,6 +603,35 @@ export default function Admin() {
                                 title="Hafta sonu kısıtı (Cmt 12:50-17:45 / Paz kapalı) bu key için">
                                 {l.haftasonu_serbest ? '🟢 Hafta sonu: SERBEST' : '⛔ Hafta sonu: kısıtlı'}
                               </button>
+                            </div>
+                            <div style={{ display: 'flex', gap: 8, marginTop: 10, flexWrap: 'wrap', alignItems: 'center' }}>
+                              <span style={S.bilgi}>
+                                <b>Ürün (hangi botta çalışır):</b>
+                              </span>
+                              {[
+                                ['tr', 'TR'],
+                                ['pvp', 'PvP'],
+                                ['', 'Seçilmemiş (ikisi de)'],
+                              ].map(([u, ad]) => (
+                                <button
+                                  key={ad}
+                                  onClick={() => (l.urun || '') !== u && islem(l.id, { islem: 'urun', urun: u })}
+                                  style={(l.urun || '') === u ? { ...S.mini, ...urunRozet(u), padding: '5px 10px' } : S.mini}
+                                >
+                                  {(l.urun || '') === u ? '● ' : ''}
+                                  {ad}
+                                </button>
+                              ))}
+                              {l.son_urun && (
+                                <span style={S.bilgi}>
+                                  en son görüldüğü bot: <b>{l.son_urun === 'pvp' ? 'PvP' : 'TR'}</b>
+                                </span>
+                              )}
+                              {l.urun === 'pvp' && (
+                                <span style={{ ...S.bilgi, color: '#ff9f43' }}>
+                                  PvP: hafta sonu kısıtı ve günlük limit uygulanmaz
+                                </span>
+                              )}
                             </div>
                             <div style={{ display: 'flex', gap: 8, marginTop: 10, flexWrap: 'wrap' }}>
                               <button
