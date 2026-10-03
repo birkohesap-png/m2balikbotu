@@ -1,6 +1,6 @@
 import Link from 'next/link';
 import { SITE, SAYFALAR } from '@/lib/site';
-import { TgIkon, IgIkon } from './Ikonlar';
+import { TgIkon, IgIkon, YtIkon } from './Ikonlar';
 import TelegramSec from './TelegramSec';
 
 export default function Alt() {
@@ -21,7 +21,7 @@ export default function Alt() {
               </Link>
               <p>
                 Metin2 balık botu — otomatik balık tutma, pişirme ve Balık Yapboz
-                etkinliği. Satış ve lisans işlemleri yalnızca Telegram{' '}
+                etkinliği; PvP sunucuları için K34 PvP. Satış ve lisans işlemleri yalnızca Telegram{' '}
                 <b>@{SITE.telegram}</b> hesabından yapılır.
               </p>
 
@@ -50,6 +50,13 @@ export default function Alt() {
                   <span>
                     <b>Instagram</b>
                     <small>@{SITE.instagram}</small>
+                  </span>
+                </a>
+                <a className="sosyal-btn yt" href={SITE.youtubeUrl} target="_blank" rel="noopener">
+                  <YtIkon />
+                  <span>
+                    <b>YouTube</b>
+                    <small>{SITE.youtube}</small>
                   </span>
                 </a>
               </div>

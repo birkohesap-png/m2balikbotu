@@ -75,7 +75,7 @@ export default function YapbozSayfa() {
           {/* ---- video ---- */}
           <figure className="yapboz-figur">
             <video
-              className="video-genis"
+              className="video-dikey"
               src={YAPBOZ.video.src}
               poster={YAPBOZ.video.poster}
               width={YAPBOZ.video.genislik}

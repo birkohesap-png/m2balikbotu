@@ -1,8 +1,8 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import Link from 'next/link';
-import { SITE, PAKETLER, OZELLIKLER, SSS, GUVENLIK, IADE, YAPBOZ } from '@/lib/site';
-import { JsonLd, sayfaMeta } from '@/lib/seo';
+import { SITE, PAKETLER, OZELLIKLER, SSS, GUVENLIK, IADE, YAPBOZ, PVP, VIDEOLAR } from '@/lib/site';
+import { JsonLd, sayfaMeta, youtubeVideoSemasi } from '@/lib/seo';
 import { Ikon, Tik, TgIkon, IgIkon } from './Ikonlar';
 import TelegramSec from './TelegramSec';
 import Ust from './Ust';
@@ -10,11 +10,11 @@ import Alt from './Alt';
 import Galeri from './Galeri';
 
 export const metadata = sayfaMeta({
-  baslik: 'Metin2 Balık Botu | K34 — Otomatik Balık Tutma ve Yapboz Botu',
+  baslik: 'Metin2 Balık Botu — K34 Balık Botu | TR ve PvP Otomatik Balık Botu',
   aciklama:
-    'Metin2 balık botu — K34 ile 7/24 otomatik balık tut, balıkları pişir ve Balık Yapboz ' +
-    'etkinliğini en az denemeyle bitir. İnsansı fare hareketi, MultiAcc, Auto Login ve ' +
-    '7/24 Telegram desteği.',
+    'K34 Metin2 balık botu: 7/24 otomatik balık tut, pişir ve Balık Yapboz etkinliğini en az ' +
+    'denemeyle bitir. Rascal dahil PvP sunucuları için K34 PvP. MultiAcc, Auto Login, ' +
+    'Telegram’dan uzaktan kontrol ve 48 saat iade garantisi.',
   yol: '/',
 });
 
@@ -47,7 +47,7 @@ const SEMA = [
     '@type': 'SoftwareApplication',
     '@id': SITE.url + '/#urun',
     name: 'K34 Metin2 Balık Botu',
-    alternateName: ['Metin2 Balık Botu', 'Metin2 Fish Bot', 'Metin2 Fishing Bot', 'K34 Balık Botu'],
+    alternateName: ['Metin2 Balık Botu', 'Metin2 Fish Bot', 'Metin2 Fishing Bot', 'K34 Balık Botu', 'm2balikbotu'],
     applicationCategory: 'GameApplication',
     operatingSystem: 'Windows 10, Windows 11',
     inLanguage: 'tr',
@@ -56,9 +56,9 @@ const SEMA = [
       've Balık Yapboz etkinliğini matematiksel olarak en iyi hamlelerle bitirir.',
     url: SITE.url,
     image: SITE.url + '/logo.png',
-    softwareVersion: '2.1',
+    softwareVersion: '2.8',
     datePublished: '2026-08-13',
-    dateModified: YAPBOZ.video.tarih,
+    dateModified: '2026-10-03',
     publisher: { '@id': SITE.url + '/#kurum' },
     featureList: [
       'Otomatik balık tutma',
@@ -69,6 +69,9 @@ const SEMA = [
       'Telegram uzaktan kontrol',
       'İnsansı fare hareketi',
       'Balık filtresi',
+      'GM nöbeti uyarısı',
+      'Özel mesajlara otomatik cevap',
+      'Otomatik güncelleme',
     ],
     offers: {
       '@type': 'AggregateOffer',
@@ -88,12 +91,9 @@ const SEMA = [
         description: `${p.sure} kullanım, ${p.cihaz} bilgisayar`,
       })),
     },
-    aggregateRating: {
-      '@type': 'AggregateRating',
-      ratingValue: '4.9',
-      ratingCount: '187',
-      bestRating: '5',
-    },
+    // NOT: aggregateRating BILEREK YOK. Sayfada gercek kullanici yorumlari
+    // gosterilmeden puan isaretlemek Google yapilandirilmis veri politikasina
+    // aykiridir ve manuel ceza sebebidir. Gercek yorum sistemi gelirse eklenir.
   },
   {
     '@context': 'https://schema.org',
@@ -110,21 +110,8 @@ const SEMA = [
     isFamilyFriendly: true,
     publisher: { '@id': SITE.url + '/#kurum' },
   },
-  {
-    '@context': 'https://schema.org',
-    '@type': 'VideoObject',
-    name: 'Metin2 TR Balık Botu Nasıl Kullanılır? Kurulum ve Ayarlar (2026)',
-    description:
-      'K34 Metin2 Balık Botu tanıtım videosu: kurulum, ayarlar, balık filtresi, otomatik pişirme ' +
-      've Balık Yapboz özelliklerinin adım adım anlatımı.',
-    thumbnailUrl: ['https://i.ytimg.com/vi/' + SITE.youtubeId + '/maxresdefault.jpg'],
-    embedUrl: 'https://www.youtube.com/embed/' + SITE.youtubeId,
-    contentUrl: 'https://www.youtube.com/watch?v=' + SITE.youtubeId,
-    uploadDate: '2026-08-26',
-    inLanguage: 'tr',
-    isFamilyFriendly: true,
-    publisher: { '@id': SITE.url + '/#kurum' },
-  },
+  youtubeVideoSemasi(VIDEOLAR.tanitim),
+  youtubeVideoSemasi(VIDEOLAR.pvp),
 ];
 
 export default function AnaSayfa() {
@@ -158,6 +145,12 @@ export default function AnaSayfa() {
                 Fiyatları Gör
               </a>
             </div>
+            <Link className="hero-pvp" href="/pvp-balik-botu">
+              <span className="hero-pvp-rozet">YENİ</span>
+              <span>
+                <b>K34 PvP</b> yayında — Rascal dahil PvP sunucularında çalışır →
+              </span>
+            </Link>
             <div className="guven">
               <div>
                 <b>7/24</b>Telegram desteği
@@ -226,7 +219,7 @@ export default function AnaSayfa() {
           <div className="yapboz-ic">
             <div className="yapboz-video">
               <video
-                className="video-genis"
+                className="video-dikey"
                 src={YAPBOZ.video.src}
                 poster={YAPBOZ.video.poster}
                 width={YAPBOZ.video.genislik}
@@ -239,7 +232,7 @@ export default function AnaSayfa() {
                 aria-label={YAPBOZ.video.baslik}
               />
               <p className="video-alt" style={{ marginTop: 14 }}>
-                Gerçek kayıt: bot sandığı sürüklüyor, onayı geçiyor ve parçayı yerleştiriyor.
+                Gerçek kayıt: yapboz botu birden fazla sanal makinede aynı anda çalışıyor.
               </p>
             </div>
 
@@ -268,6 +261,53 @@ export default function AnaSayfa() {
             <Link className="btn btn-hayalet" href="/yapboz-botu">
               Yapboz botunu detaylı incele →
             </Link>
+          </div>
+        </div>
+      </section>
+
+      {/* ---------------- K34 PvP (ayri urun) ---------------- */}
+      <section className="bolum" id="pvp" style={{ paddingTop: 0 }}>
+        <div className="sar">
+          <div className="bolum-bas">
+            <span className="etiket etiket-pvp">★ {PVP.ustBaslik} · K34 PvP</span>
+            <h2>
+              <span className="pvp-yazi">PvP sunucuları</span> için de balık botu
+            </h2>
+            <p>{PVP.ozet}</p>
+          </div>
+
+          <div className="pvp-ic">
+            <div className="video-cerceve">
+              <iframe
+                src={`https://www.youtube-nocookie.com/embed/${VIDEOLAR.pvp.id}`}
+                title={VIDEOLAR.pvp.baslik}
+                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                allowFullScreen
+                loading="lazy"
+              />
+            </div>
+            <ul className="pvp-liste">
+              {PVP.ozellikler.slice(0, 5).map((o) => (
+                <li key={o.baslik}>
+                  <Tik />
+                  <div>
+                    <b>{o.baslik}</b>
+                    <span>{o.metin}</span>
+                  </div>
+                </li>
+              ))}
+            </ul>
+          </div>
+
+          <div style={{ textAlign: 'center', marginTop: 26, display: 'flex', gap: 12, justifyContent: 'center', flexWrap: 'wrap' }}>
+            <Link className="btn btn-hayalet" href="/pvp-balik-botu">
+              K34 PvP’yi detaylı incele →
+            </Link>
+            <TelegramSec
+              etiket="PvP Anahtarı Al"
+              sinif="btn btn-pvp"
+              mesaj="Merhaba, K34 PvP Balık Botu için anahtar almak istiyorum."
+            />
           </div>
         </div>
       </section>
@@ -319,13 +359,13 @@ export default function AnaSayfa() {
             <h2>
               Botu <span className="altin-yazi">iş başında</span> izle
             </h2>
-            <p>Kurulumdan ilk balığa kadar her adım videoda.</p>
+            <p>2026 tanıtım videosu: kurulumdan ilk balığa, Telegram kontrolünden yapboz botuna kadar.</p>
           </div>
           <div className="video-cerceve">
             {SITE.youtubeId ? (
               <iframe
                 src={`https://www.youtube-nocookie.com/embed/${SITE.youtubeId}`}
-                title="Metin2 Balık Botu tanıtım videosu"
+                title={VIDEOLAR.tanitim.baslik}
                 allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
                 allowFullScreen
                 loading="lazy"
@@ -378,13 +418,21 @@ export default function AnaSayfa() {
               <table className="nedir-tablo">
                 <tbody>
                   <tr><th>Ürün adı</th><td>K34 Metin2 Balık Botu</td></tr>
-                  <tr><th>Oyun</th><td>Metin2 (Gameforge TR ve PVP sunucuları)</td></tr>
+                  <tr>
+                    <th>Oyun</th>
+                    <td>
+                      Metin2 Gameforge TR · PvP sunucuları için{' '}
+                      <Link href="/pvp-balik-botu" className="ic-link">
+                        K34 PvP
+                      </Link>
+                    </td>
+                  </tr>
                   <tr><th>İşletim sistemi</th><td>Windows 10 / Windows 11</td></tr>
                   <tr><th>Kurulum</th><td>Gerekmez — tek .exe dosyası</td></tr>
                   <tr><th>Dil</th><td>Türkçe</td></tr>
                   <tr><th>Fiyat</th><td>Günlük 300₺ · Haftalık 1300₺ · Aylık 2500₺</td></tr>
                   <tr><th>Satış / destek</th><td>Telegram @{SITE.telegram}</td></tr>
-                  <tr><th>İade</th><td>Beğenmezsen para iadesi</td></tr>
+                  <tr><th>İade</th><td>{IADE.kisa}</td></tr>
                 </tbody>
               </table>
             </div>

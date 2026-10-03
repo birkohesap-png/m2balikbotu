@@ -5,6 +5,7 @@ import TelegramSec from './TelegramSec';
    dogru yere gider. */
 const MENU = [
   { yol: '/yapboz-botu', ad: 'Yapboz Botu' },
+  { yol: '/pvp-balik-botu', ad: 'PvP Botu' },
   { yol: '/#ozellikler', ad: 'Özellikler' },
   { yol: '/#guvenlik', ad: 'Güvenlik' },
   { yol: '/#fiyatlar', ad: 'Fiyatlar' },

@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { SITE } from '@/lib/site';
+import { SITE, IADE } from '@/lib/site';
 import { JsonLd, sayfaMeta, kirintiSemasi } from '@/lib/seo';
 import TelegramSec from '../TelegramSec';
 import Ust from '../Ust';
@@ -7,8 +7,8 @@ import Alt from '../Alt';
 
 const ACIKLAMA =
   'Metin2 balık botu, balık tutma işlemini oyuncu yerine otomatik yapan yardımcı ' +
-  'programdır. Nasıl çalıştığını, ne işe yaradığını ve güvenli kullanımını adım adım ' +
-  'anlattık.';
+  'programdır. Nasıl çalıştığını, ne işe yaradığını, iyi bir botta nelere bakılacağını ' +
+  've PvP sunucularında kullanımını adım adım anlattık.';
 
 export const metadata = sayfaMeta({
   baslik: 'Metin2 Balık Botu Nedir, Nasıl Çalışır?',
@@ -26,7 +26,7 @@ const SEMA = [
     description: ACIKLAMA,
     inLanguage: 'tr',
     datePublished: '2026-08-13',
-    dateModified: '2026-09-07',
+    dateModified: '2026-10-03',
     author: { '@id': SITE.url + '/#kurum' },
     publisher: { '@id': SITE.url + '/#kurum' },
     image: [SITE.url + '/logo.png'],
@@ -81,7 +81,12 @@ export default function NedirSayfa() {
             <p>
               <strong>K34 Balık Botu</strong>, Metin2 için Türkçe geliştirilmiş bir balık
               botudur. Windows 10 ve 11’de çalışır, kurulum gerektirmez ve tek bir{' '}
-              <code>.exe</code> dosyasıdır.
+              <code>.exe</code> dosyasıdır. Gameforge TR sunucuları için <strong>K34</strong>,
+              PvP sunucuları için{' '}
+              <Link href="/pvp-balik-botu" className="ic-link">
+                K34 PvP
+              </Link>{' '}
+              sürümü vardır.
             </p>
 
             <h2>Metin2 balık botu ne işe yarar?</h2>
@@ -116,6 +121,11 @@ export default function NedirSayfa() {
               yöntemlerinin hiçbirini kullanmaz.
             </p>
             <p>
+              Hiçbir botta risk tamamen sıfır değildir; K34 bu riski düşürmek için ayrıca
+              günlük çalışma süresini sınırlar, hafta sonu GM’lerin yoğun olduğu saatlerde
+              durur ve GM’ler aktif olduğunda Telegram’dan uyarır.
+            </p>
+            <p>
               En güvenli kullanım için aylık pakette bilgisayarına bypass’lı sanal
               makineleri biz kuruyoruz; Metin2 ve bot sanal makinenin içinde çalıştığı için
               ana bilgisayarındaki hesaplarınla hiçbir bağı olmaz.
@@ -129,18 +139,62 @@ export default function NedirSayfa() {
               listeye eklenebilir.
             </p>
 
+            <h2>İyi bir Metin2 balık botunda nelere bakılmalı?</h2>
+            <ul className="nedir-adim">
+              <li>
+                <strong>Oyunun belleğine dokunmamalı:</strong> bellek okuyan ya da DLL enjekte
+                eden botlar anti-cheat’in ilk aradığı şeydir.
+              </li>
+              <li>
+                <strong>İnsansı fare hareketi:</strong> fare ışınlanmamalı, tıklama aralıkları
+                her seferinde değişmeli.
+              </li>
+              <li>
+                <strong>Balık filtresi ve pişirme:</strong> envanteri değersiz balıkla doldurmamalı,
+                dolunca kendi pişirmeli.
+              </li>
+              <li>
+                <strong>Auto Login ve DC koruması:</strong> bağlantı koptuğunda kendi girip
+                kaldığı yerden devam etmeli.
+              </li>
+              <li>
+                <strong>Uzaktan takip:</strong> bot durduğunda, DC olduğunda ya da karakter
+                öldüğünde haber vermeli.
+              </li>
+              <li>
+                <strong>Güncel kalmalı:</strong> oyun değiştiğinde güncellenmeli; K34 kendini
+                otomatik günceller.
+              </li>
+              <li>
+                <strong>Destek ve iade:</strong> sorun çıktığında ulaşabileceğin bir destek ve
+                deneme süresi olmalı — K34’te 7/24 Telegram desteği ve {IADE.kisa.toLowerCase()} var.
+              </li>
+            </ul>
+
+            <h2>PvP sunucularında balık botu</h2>
+            <p>
+              PvP sunucularının balık minigame’i Gameforge TR’den farklıdır (kırmızı halka) ve
+              client pencereleri farklı adlar taşır. Bu yüzden PvP için ayrı geliştirilmiş{' '}
+              <Link href="/pvp-balik-botu" className="ic-link">
+                K34 PvP
+              </Link>{' '}
+              kullanılır: Rascal dahil koruma sistemli PvP sunucularında çalışır, client’ı
+              listeden seçersin, envanter bakımını kendisi yapar. PvP sürümünde günlük çalışma
+              limiti ve hafta sonu kısıtı yoktur.
+            </p>
+
             <h2>Özet bilgiler</h2>
             <div className="nedir-tablo-sar">
               <table className="nedir-tablo">
                 <tbody>
                   <tr><th>Ürün adı</th><td>K34 Metin2 Balık Botu</td></tr>
-                  <tr><th>Oyun</th><td>Metin2 (Gameforge TR ve PVP sunucuları)</td></tr>
+                  <tr><th>Oyun</th><td>Metin2 Gameforge TR (K34) · PvP sunucuları (K34 PvP)</td></tr>
                   <tr><th>İşletim sistemi</th><td>Windows 10 / Windows 11</td></tr>
                   <tr><th>Kurulum</th><td>Gerekmez — tek .exe dosyası</td></tr>
                   <tr><th>Dil</th><td>Türkçe</td></tr>
                   <tr><th>Fiyat</th><td>Günlük 300₺ · Haftalık 1300₺ · Aylık 2500₺</td></tr>
                   <tr><th>Satış / destek</th><td>Telegram @{SITE.telegram}</td></tr>
-                  <tr><th>İade</th><td>Beğenmezsen para iadesi</td></tr>
+                  <tr><th>İade</th><td>{IADE.kisa}</td></tr>
                 </tbody>
               </table>
             </div>
@@ -162,7 +216,7 @@ export default function NedirSayfa() {
             <h2 style={{ marginTop: 0 }}>
               Botu <span className="altin-yazi">denemek ister misin?</span>
             </h2>
-            <p>Beğenmezsen para iadesi yapıyoruz. Risk sende değil, bizde.</p>
+            <p>{IADE.metin}</p>
             <TelegramSec etiket="Telegram’dan Satın Al" sinif="btn btn-altin" />
           </div>
         </div>

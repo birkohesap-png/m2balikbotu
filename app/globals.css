@@ -530,6 +530,7 @@ button.btn-hayalet{background:rgba(255,255,255,.03)}
 .sosyal-btn:hover{border-color:rgba(231,193,99,.4);transform:translateY(-2px)}
 .sosyal-btn svg{width:18px;height:18px;flex:0 0 auto;color:#3fa3e8}
 .sosyal-btn.ig svg{color:#ee2a7b}
+.sosyal-btn.yt svg{color:#ff2a2a}
 .sosyal-btn b{display:block;font-size:12.5px;color:var(--beyaz)}
 .sosyal-btn small{display:block;font-size:11px;color:var(--gri2)}
 
@@ -580,4 +581,63 @@ button.btn-hayalet{background:rgba(255,255,255,.03)}
   .tgsec-secenek{padding:13px}
   .surum-bas time{margin-left:0;width:100%}
   .sosyal-btn{flex:1 1 100%}
+}
+
+/* ==================================================================
+   (3 Eki 2026) Dikey yapboz videosu + K34 PvP vurgusu (turuncu)
+   ================================================================== */
+.video-dikey{
+  width:100%;max-width:340px;height:auto;aspect-ratio:540/960;border-radius:16px;
+  border:1px solid var(--cizgi);background:#000;display:block;margin:0 auto
+}
+.yapboz-figur .video-dikey{margin:0}
+
+.hero-pvp{
+  display:inline-flex;align-items:center;gap:10px;margin:-14px 0 28px;
+  padding:8px 16px 8px 8px;border-radius:100px;border:1px solid rgba(255,159,67,.35);
+  background:rgba(255,159,67,.07);color:var(--beyaz);font-size:13.5px;line-height:1.4;
+  transition:border-color .2s,transform .2s
+}
+.hero-pvp:hover{border-color:rgba(255,159,67,.75);transform:translateY(-1px)}
+.hero-pvp b{color:#ffb469}
+.hero-pvp-rozet{
+  flex:0 0 auto;font-size:10.5px;font-weight:900;letter-spacing:1.5px;color:#2a1600;
+  background:linear-gradient(135deg,#ffc58a,#ff9f43);padding:4px 9px;border-radius:100px
+}
+
+.pvp-yazi{
+  background:linear-gradient(135deg,#ffd29c,#ff9f43 50%,#e0702a);
+  -webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent
+}
+.etiket-pvp{color:#ffb469;border-color:rgba(255,159,67,.35);background:rgba(255,159,67,.07)}
+.btn-pvp,button.btn-pvp{
+  background:linear-gradient(135deg,#ffc58a,#ff9f43 50%,#e0702a);color:#2a1600;
+  box-shadow:0 16px 40px -18px rgba(255,159,67,.85)
+}
+.btn-pvp:hover{transform:translateY(-2px)}
+.pvp-ic{display:grid;grid-template-columns:1.1fr .9fr;gap:30px;align-items:center}
+.pvp-liste{list-style:none;display:grid;gap:14px}
+.pvp-liste li{display:flex;gap:12px;align-items:flex-start}
+.pvp-liste svg{flex:0 0 auto;width:20px;height:20px;stroke:#ff9f43;fill:none;stroke-width:2.4;margin-top:2px}
+.pvp-liste b{display:block;font-size:15px;margin-bottom:3px}
+.pvp-liste span{color:var(--gri);font-size:13.5px;line-height:1.65}
+.pvp-figur{margin:30px 0 0;max-width:900px}
+.pvp-figur figcaption{color:var(--gri2);font-size:13px;line-height:1.7;margin-top:14px}
+.pvp-tablo th{width:auto}
+.pvp-tablo thead th{color:var(--beyaz);font-weight:800}
+.pvp-tablo td:last-child{color:#ffd29c}
+@media(max-width:900px){
+  .pvp-ic{grid-template-columns:1fr}
+}
+@media(max-width:560px){
+  .hero-pvp{font-size:12.5px;margin-top:-18px}
+  .video-dikey{max-width:280px}
+}
+
+/* Menu 7 ogeye cikti (PvP Botu): orta genislikte (981-1240px) iki satira
+   kaymasin. 980px alti zaten gizli (mobil). */
+.menu a{white-space:nowrap}
+@media(max-width:1240px){
+  .menu{gap:2px}
+  .menu a{padding-left:9px;padding-right:9px;font-size:13px}
 }

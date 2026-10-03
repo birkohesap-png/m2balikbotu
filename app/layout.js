@@ -5,8 +5,8 @@ import { JsonLd } from '@/lib/seo';
 const BASLIK = 'Metin2 Balık Botu | K34 — Otomatik Balık Tutma ve Yapboz Botu';
 const ACIKLAMA =
   'Metin2 balık botu — K34 ile 7/24 otomatik balık tut, balıkları pişir ve Balık Yapboz ' +
-  'etkinliğini en az denemeyle bitir. İnsansı fare hareketi, MultiAcc, Auto Login ve ' +
-  '7/24 Telegram desteği. Metin2 fish bot Türkçe sürüm.';
+  'etkinliğini en az denemeyle bitir. PvP sunucuları için K34 PvP. İnsansı fare hareketi, ' +
+  'MultiAcc, Auto Login ve 7/24 Telegram desteği.';
 
 export const metadata = {
   metadataBase: new URL(SITE.url),
@@ -70,7 +70,9 @@ const SITE_SEMA = [
     '@type': 'Organization',
     '@id': SITE.url + '/#kurum',
     name: SITE.ad,
-    alternateName: SITE.kisaAd,
+    // Marka aramalari ("m2balikbotu", "k34 balik botu") icin Google'a ayni varligin
+    // diger adlari. Site adi (sitelinks / site name) de buradan beslenir.
+    alternateName: [SITE.kisaAd, 'K34', 'm2balikbotu', 'M2 Balık Botu'],
     url: SITE.url,
     logo: { '@type': 'ImageObject', url: SITE.url + '/logo.png', width: 512, height: 512 },
     sameAs: SOSYAL.map((s) => s.url),
@@ -87,8 +89,9 @@ const SITE_SEMA = [
     '@context': 'https://schema.org',
     '@type': 'WebSite',
     '@id': SITE.url + '/#site',
-    name: SITE.ad,
-    url: SITE.url,
+    name: SITE.kisaAd,
+    alternateName: [SITE.ad, 'm2balikbotu', 'm2balikbotu.com', 'Metin2 Balık Botu'],
+    url: SITE.url + '/',
     inLanguage: 'tr-TR',
     publisher: { '@id': SITE.url + '/#kurum' },
   },

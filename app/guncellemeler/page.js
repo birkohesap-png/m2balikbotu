@@ -7,10 +7,14 @@ import Alt from '../Alt';
 export const metadata = sayfaMeta({
   baslik: 'Güncellemeler — K34 Metin2 Balık Botu Sürüm Notları',
   aciklama:
-    'K34 Metin2 Balık Botu sürüm notları. Balık Yapboz botu, insansı vuruş hareketi, ' +
-    'mini panel, MultiAcc ve Telegram karakter takibi gibi yeniliklerin tam listesi.',
+    'K34 Metin2 Balık Botu ve K34 PvP sürüm notları: Telegram’dan tam kontrol, GM nöbeti, ' +
+    'Balık Yapboz botu, PvP sürümü, MultiAcc ve güvenlik yeniliklerinin tam listesi.',
   yol: '/guncellemeler',
 });
+
+// PvP surumleri ayni listede; etiket ve capa (id) urune gore ayrilir.
+const etiket = (g) => (g.urun === 'pvp' ? 'PvP v' : 'v') + g.surum;
+const capa = (g) => (g.urun === 'pvp' ? 'pvp-v' : 'v') + g.surum;
 
 const tarihYaz = (t) =>
   new Date(t).toLocaleDateString('tr-TR', { day: 'numeric', month: 'long', year: 'numeric' });
@@ -25,8 +29,8 @@ const SEMA = [
     itemListElement: GUNCELLEMELER.map((g, i) => ({
       '@type': 'ListItem',
       position: i + 1,
-      name: `v${g.surum} — ${g.baslik}`,
-      url: SITE.url + '/guncellemeler#v' + g.surum,
+      name: `${etiket(g)} — ${g.baslik}`,
+      url: SITE.url + '/guncellemeler#' + capa(g),
     })),
   },
 ];
@@ -51,14 +55,14 @@ export default function GuncellemelerSayfa() {
           </h1>
           <p className="ic-giris">
             Botu sürekli geliştiriyoruz. Yeni özellikler mevcut lisansına ek ücret olmadan
-            gelir — güncel sürümü Telegram’dan alman yeterli.
+            gelir — bot yeni sürümü açılışta kendisi indirip kurar.
           </p>
 
           <ol className="surum-listesi">
             {GUNCELLEMELER.map((g) => (
-              <li key={g.surum} id={'v' + g.surum} className={g.yeni ? 'yeni' : ''}>
+              <li key={capa(g)} id={capa(g)} className={g.yeni ? 'yeni' : ''}>
                 <div className="surum-bas">
-                  <span className="surum-no">v{g.surum}</span>
+                  <span className="surum-no">{etiket(g)}</span>
                   {g.yeni && <span className="surum-rozet">YENİ</span>}
                   <time dateTime={g.tarih}>{tarihYaz(g.tarih)}</time>
                 </div>
@@ -73,8 +77,9 @@ export default function GuncellemelerSayfa() {
           </ol>
 
           <p style={{ marginTop: 34 }}>
-            En son eklenen <Link href="/yapboz-botu" className="ic-link">Balık Yapboz botunu</Link>{' '}
-            ayrıntılı incelemek istersen kendi sayfasında video kaydıyla anlattık.
+            <Link href="/yapboz-botu" className="ic-link">Balık Yapboz botunu</Link> ve{' '}
+            <Link href="/pvp-balik-botu" className="ic-link">K34 PvP sürümünü</Link> ayrıntılı
+            incelemek istersen kendi sayfalarında video kaydıyla anlattık.
             Duyuruları anında görmek için Telegram grubumuza{' '}
             <a href={SITE.telegramGrupUrl} target="_blank" rel="noopener" className="ic-link">
               @{SITE.telegramGrup}

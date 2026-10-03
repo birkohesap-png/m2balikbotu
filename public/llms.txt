@@ -1,0 +1,38 @@
+# K34 Metin2 Balık Botu (m2balikbotu.com)
+
+> K34, Metin2 için Türkçe geliştirilmiş otomatik balık tutma botudur. Gameforge TR sunucuları için K34, PvP sunucuları (Rascal dahil koruma sistemli sunucular) için ayrı K34 PvP sürümü vardır. Windows 10/11'de çalışır; oyunun belleğine veya dosyalarına dokunmaz, ekrana bakıp fare ve klavyeyi insan gibi kullanır.
+
+## Ürün özeti
+
+- Metin2 balık botu: oltayı atar, balık minigame'ini oynar, balık filtresiyle istenmeyenleri atar, envanter dolunca kamp ateşinde pişirir.
+- Balık Yapboz botu: Balık Yapboz etkinliğini önceden çözülmüş karar tablosuyla (16.777.216 tahta durumu) en az denemeyle bitirir. Yalnızca TR sürümünde.
+- K34 PvP: PvP sunucuları için ayrı sürüm. Client listeden seçilir, kırmızı halka balık minigame'ini oynar, envanter bakımı yapar (balık açma, saç boyası atma, eşya taşıma). Günlük limit ve hafta sonu kısıtı yoktur.
+- Ortak: MultiAcc (çoklu pencere), Auto Login ve DC koruması, Telegram'dan uzaktan kontrol (oyunu açma, botu başlatma/durdurma, bildirimler), GM nöbeti uyarısı, özel mesajlara otomatik cevap, otomatik güncelleme.
+- Güvenlik (TR sürümü): günde en fazla 14 saat çalışma, hafta sonu GM saatlerinde otomatik duraklama (Cumartesi yalnızca 12:50–17:45, Pazar kapalı).
+
+## Fiyatlar ve satış
+
+- Günlük paket: 300 TL, 24 saat, 1 bilgisayar
+- Haftalık paket: 1300 TL, 7 gün, 2 bilgisayar
+- Aylık paket: 2500 TL, 30 gün, 6 bilgisayar, sanal makine (VM) kurulumu dahil
+- Satış ve destek yalnızca Telegram: @k34balik (https://t.me/k34balik)
+- İade: satın aldıktan sonraki ilk 48 saat içinde
+- Lisans süresi botta ilk girişte başlar. TR anahtarı yalnızca TR botunda, PvP anahtarı yalnızca PvP botunda çalışır.
+
+## Sayfalar
+
+- [Ana sayfa](https://m2balikbotu.com/): özellikler, fiyatlar, tanıtım videosu
+- [Metin2 balık botu nedir?](https://m2balikbotu.com/metin2-balik-botu-nedir): tanım, nasıl çalışır, iyi bir botta nelere bakılmalı
+- [Balık Yapboz botu](https://m2balikbotu.com/yapboz-botu): yapboz etkinliğinin otomatik oynanması, video kaydı
+- [K34 PvP balık botu](https://m2balikbotu.com/pvp-balik-botu): PvP sunucuları için sürüm, TR ile farkları
+- [Güncellemeler](https://m2balikbotu.com/guncellemeler): sürüm notları
+- [Sıkça sorulan sorular](https://m2balikbotu.com/sss)
+- [İletişim](https://m2balikbotu.com/iletisim)
+
+## Bağlantılar
+
+- YouTube: https://www.youtube.com/@K34Official
+- Telegram grup: https://t.me/k34genel
+- Instagram: https://instagram.com/k34balik
+
+Bu site Gameforge veya Metin2 ile resmî bir bağlantıya sahip değildir.
