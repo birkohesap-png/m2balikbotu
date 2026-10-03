@@ -17,5 +17,11 @@ python k34_makro.py
 ```
 Ek kütüphane gerekmez (Python 3.8+, Windows). Client yönetici olarak açıksa makroyu da yönetici olarak çalıştır.
 
-## .exe yapma
-`exe_yap.bat` dosyasına çift tıkla → `dist\K34Makro.exe`.
+![Arayüz](onizleme.png)
+
+## .exe indirme
+`makro/` klasöründe değişiklik pushlandığında GitHub otomatik olarak Windows .exe derler:
+GitHub → **Actions** → **K34 Makro EXE** → son çalışma → en altta **Artifacts → K34Makro** (zip içinde `K34Makro.exe`).
+Elle derlemek için `Run workflow` butonu da var.
+
+Kendi bilgisayarında derlemek istersen: `exe_yap.bat` dosyasına çift tıkla → `dist\K34Makro.exe`.
