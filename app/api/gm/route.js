@@ -121,10 +121,11 @@ async function calis(req) {
         UPDATE gm_durum
            SET aktif = ${JSON.stringify([...simdi])}::jsonb,
                son_tarama = NOW(),
-               son_bildirim = ${yeni.length ? new Date().toISOString() : null}
+               son_bildirim = ${yeni.length ? new Date().toISOString() : null},
+               son_hata = ''
          WHERE id = 1`;
     } else {
-      await sql`UPDATE gm_durum SET son_tarama = NOW() WHERE id = 1`;
+      await sql`UPDATE gm_durum SET son_tarama = NOW(), son_hata = ${String(hata).slice(0, 200)} WHERE id = 1`;
     }
   }
 

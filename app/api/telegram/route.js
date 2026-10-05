@@ -653,7 +653,7 @@ export async function POST(req) {
         return OK();
       }
       const liste = gmListesi();
-      const { rows: gd } = await sql`SELECT aktif, son_tarama FROM gm_durum WHERE id = 1`;
+      const { rows: gd } = await sql`SELECT aktif, son_tarama, son_hata FROM gm_durum WHERE id = 1`;
       const aktifSet = new Set(
         (gd[0] && Array.isArray(gd[0].aktif) ? gd[0].aktif : []).map((a) => String(a).toLowerCase())
       );
@@ -669,6 +669,11 @@ export async function POST(req) {
       if (gd[0] && gd[0].son_tarama) {
         const yasSn = Math.max(0, Math.floor((Date.now() - new Date(gd[0].son_tarama).getTime()) / 1000));
         alt = `\n\n🕐 Son kontrol: ${yasSn < 90 ? 'az önce' : sureMetni(yasSn) + ' önce'}`;
+        // (5 Eki 2026) Son tarama BASARISIZSA (or. Discord token gecersiz) acikca yaz;
+        // eskiden hata gizleniyor, liste "hepsi kapali" gibi yaniltici gorunuyordu.
+        if (gd[0].son_hata) {
+          alt += `\n⚠️ <b>Son kontrol başarısız:</b> ${kac(gd[0].son_hata)} — GM durumu güncel olmayabilir.`;
+        }
       } else {
         alt = '\n\n<i>Henüz kontrol yapılmadı.</i>';
       }
