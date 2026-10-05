@@ -10,3 +10,5 @@ build
 
 # yerel onizleme ayari
 .claude
+__pycache__/
+.pytest_cache/
