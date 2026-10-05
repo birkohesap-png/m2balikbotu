@@ -30,7 +30,9 @@ function gizliMi(req) {
 }
 
 /**
- * Zamanlayici (cron-job.org vb.) bu ucu ~30 sn'de bir gizli anahtarla durter.
+ * Zamanlayici (cron-job.org vb.) bu ucu gizli anahtarla durter. Discord'a gercek
+ * baglanti en fazla GM_MIN_ARALIK_SN'de bir (varsayilan 150 sn) yapilir; zamanlayiciyi
+ * da 2-3 dakikaya ayarlamak gereksiz cagrilari keser.
  * Discord'da GM cevrimici mi diye bakar; YENI cevrimici olan GM varsa tum
  * musterilere Telegram'dan uyari + "oyunu kapat" butonlari dusurur.
  *
@@ -52,6 +54,22 @@ async function calis(req) {
   const sp = new URL(req.url).searchParams;
   const debugIstendi = sp.get('debug') === '1';
   const ara = String(sp.get('ara') || '').slice(0, 40);
+
+  // (5 Eki 2026) MALIYET SINIRI: dis zamanlayici ~30 sn'de bir durtse bile Discord'a
+  // en fazla GM_MIN_ARALIK_SN'de bir (varsayilan 150 sn, en az 60) baglanilir. Arada
+  // gelen cagri tek satir okuyup HEMEN doner -> Discord gateway baglantisi ve 5-10 sn
+  // fonksiyon suresi harcanmaz. debug=1 (elle test) siniri atlar.
+  if (!debugIstendi) {
+    const minAralik = Math.max(60, parseInt(process.env.GM_MIN_ARALIK_SN, 10) || 150);
+    await sql`INSERT INTO gm_durum (id) VALUES (1) ON CONFLICT (id) DO NOTHING`;
+    const { rows: z } = await sql`
+      SELECT EXTRACT(EPOCH FROM (NOW() - son_tarama))::int AS gecen FROM gm_durum WHERE id = 1`;
+    const gecen = z[0] ? z[0].gecen : null;
+    if (gecen != null && gecen < minAralik) {
+      return NextResponse.json({ ok: true, atlandi: true, sonraki_sn: minAralik - gecen });
+    }
+  }
+
   const { aktif, hata, debug } = await gatewayGmTara({ ara: debugIstendi ? ara : '' });
   const simdi = new Set(aktif);
 
