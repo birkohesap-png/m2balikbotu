@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { sql, tablolariHazirla } from '@/lib/db';
-import { lisansDogrula, fotoGonder } from '@/lib/telegram';
+import { lisansDogrula, fotoGonder, bildirimKapaliMi } from '@/lib/telegram';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -51,6 +51,19 @@ export async function POST(req) {
         ON CONFLICT (lisans_id, hwid)
         DO UPDATE SET resim = EXCLUDED.resim, zaman = NOW()`;
       return NextResponse.json({ ok: true });
+    }
+
+    // (K34 PvP) Bot Verify cozulemedi: goruntu lisansa bagli, bildirimi acik TUM sohbetlere gider
+    // (kullanici kodu gorup /kod NN yazar). 'Doğrulama' kategorisi kapatildiysa gonderilmez.
+    if (!chatId && hedef === 'lisans') {
+      if (bildirimKapaliMi(l.bildirim_kapali, 'dogrulama')) return NextResponse.json({ ok: true, atlandi: true });
+      const { rows: bag } = await sql`
+        SELECT chat_id FROM tg_baglar WHERE lisans_id = ${l.id} AND bildirim = TRUE`;
+      const kac = (t) => String(t || '').slice(0, 300).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+      const alt = `🛡 <b>${kac(pc || 'PC')}</b>` + (g.aciklama ? `
+${kac(g.aciklama)}` : '');
+      const sonuc = await Promise.all(bag.map((r) => fotoGonder(r.chat_id, buf, alt)));
+      return NextResponse.json({ ok: true, gonderilen: sonuc.filter((x) => x && x.ok).length });
     }
 
     if (!chatId) return NextResponse.json({ ok: false, sebep: 'chat_yok' }, { status: 400 });

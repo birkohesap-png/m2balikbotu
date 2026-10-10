@@ -18,6 +18,9 @@ test('bilinen turler dogru kategoriye eslesir', () => {
   assert.equal(turKategorisi('dc'), 'baglanti');
   assert.equal(turKategorisi('olum'), 'olum');
   assert.equal(turKategorisi('pm'), 'pm');
+  // K34 PvP olaylari
+  assert.equal(turKategorisi('dogrulama'), 'dogrulama');
+  assert.equal(turKategorisi('bakim'), 'pisirme');
 });
 
 test('bilinmeyen tur uyari kategorisine duser', () => {

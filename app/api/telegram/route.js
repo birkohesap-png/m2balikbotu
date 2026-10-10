@@ -26,6 +26,7 @@ const YARDIM =
   '/botbaslat — bir PC\'de botu başlat\n' +
   '/botdurdur — bir PC\'de botu durdur\n' +
   '/pckapat — bir PC\'yi uzaktan kapat\n' +
+  '<code>/kod 94</code> — (PvP) çözülemeyen Bot Verify kodunu açık PC\'lere gönder\n' +
   '/oyunukapat — bir PC\'de sadece oyunu kapat\n' +
   '/durum — lisans bilgin\n' +
   '/bildirim — tüm bildirimleri aç/kapat\n' +
@@ -587,7 +588,7 @@ export async function POST(req) {
     // (grupta calissin diye) - genel "sohbete bagli lisans" kapisindan muaf.
     const kisiselKomut = komut === '/gm' || komut === '/ekranresmi' || komut === '/ekran'
       || komut === '/pckapat' || komut === '/oyunukapat'
-      || komut === '/oyunac' || komut === '/botbaslat' || komut === '/botdurdur';
+      || komut === '/oyunac' || komut === '/botbaslat' || komut === '/botdurdur' || komut === '/kod';
     const bag = kisiselKomut ? null : await bagliLisans(chatId);
     if (!bag && !kisiselKomut) {
       await gonder(chatId, 'Önce lisansını bağla:\n<code>/baglan K34-XXXXX-XXXXX-XXXXX</code>');
@@ -798,6 +799,35 @@ export async function POST(req) {
       await gonder(chatId,
         '❌ <b>Uzaktan Oyun Kapat</b>\n\nSeçtiğin bilgisayarda sadece <b>oyun (Metin2)</b> ' +
         'kapanır, PC açık kalır.\nHangisi?', { inline_keyboard: kb });
+      return OK();
+    }
+
+    // (K34 PvP) /kod 94 - Bot Verify cozulemeyince gelen ekran goruntusundeki kodu,
+    // lisansin CEVRIMICI tum PC'lerine birakir; PvP botu bir sonraki dogrulamada girer.
+    // TR botu bu komut turunu tanimaz, yok sayar.
+    if (komut === '/kod') {
+      if (m.chat.type === 'group' || m.chat.type === 'supergroup') return OK();
+      const lis = await lisansliMi(m.from && m.from.id);
+      if (!lis) { await gonder(chatId, SATIN_AL); return OK(); }
+      const kod = (metin.split(/\s+/)[1] || '').replace(/\D/g, '').slice(0, 8);
+      if (!kod) {
+        await gonder(chatId, 'Kullanım: <code>/kod 94</code>\n\nBot Verify ekranında gördüğün kodu yaz.');
+        return OK();
+      }
+      const { rows: cih } = await sql`
+        SELECT hwid, veri FROM durumlar
+         WHERE lisans_id = ${lis.id} AND guncelleme > NOW() - (${CANLI_SN} || ' seconds')::interval`;
+      for (const c of cih) {
+        await sql`
+          DELETE FROM komutlar WHERE lisans_id = ${lis.id} AND hwid = ${c.hwid}
+             AND tur = 'kod' AND teslim IS NULL`;
+        await sql`
+          INSERT INTO komutlar (lisans_id, hwid, tur, veri)
+          VALUES (${lis.id}, ${c.hwid}, 'kod', ${JSON.stringify({ kod })}::jsonb)`;
+      }
+      await gonder(chatId, cih.length
+        ? `🛡 Kod <b>${kod}</b> gönderildi (${cih.length} PC). Bot en geç ~30 sn içinde alır, bir sonraki doğrulamada girer.`
+        : '⚪ Çevrimiçi bilgisayar yok — botun açık olduğundan emin ol.');
       return OK();
     }
 

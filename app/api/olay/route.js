@@ -25,6 +25,9 @@ const BASLIK = {
   altinton: '🏆 <b>Altın Ton alındı</b>',
   metinreset: '🌙 <b>Metin+ reset</b>',
   solucan: '🪱 <b>Solucan alma bitti</b>',
+  // (K34 PvP) Bot Verify / Guvenlik Kontrolu ve envanter bakimi (balik acma, istiridye tasima)
+  dogrulama: '🛡 <b>Doğrulama</b>',
+  bakim: '🧹 <b>Envanter bakımı</b>',
 };
 
 /**
