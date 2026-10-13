@@ -25,6 +25,8 @@ const YARDIM =
   '/oyunac — bir PC\'de oyunu aç (Gameforge → Oyna)\n' +
   '/botbaslat — bir PC\'de botu başlat\n' +
   '/botdurdur — bir PC\'de botu durdur\n' +
+  '/karakterdebekle — bir PC\'nin hesabını karakter ekranında beklet\n' +
+  '/karakterdendevam — karakter ekranındaki PC\'yi oyuna döndür\n' +
   '/pckapat — bir PC\'yi uzaktan kapat\n' +
   '<code>/kod 94</code> — (PvP) çözülemeyen Bot Verify kodunu açık PC\'lere gönder\n' +
   '/oyunukapat — bir PC\'de sadece oyunu kapat\n' +
@@ -249,6 +251,16 @@ async function pcSecKlavye(lisId, prefix, emoji) {
   });
 }
 
+// (13 Eki 2026) /karakterdebekle sure secimi. dk=0 -> "devam diyene kadar"
+// (bot tarafinda en fazla 8 saat). callback_data: 'kbs:<durumId>:<dk>'.
+const KARAKTER_BEKLE_DK = [5, 15, 30, 60, 0];
+function karakterBekleSureKlavye(durumId) {
+  const ad = (dk) => (dk ? dk + ' dk' : '⏳ Ben "devam" diyene kadar');
+  const satir = KARAKTER_BEKLE_DK.filter((d) => d).map((dk) => ({ text: '⏸ ' + ad(dk), callback_data: 'kbs:' + durumId + ':' + dk }));
+  return [satir.slice(0, 2), satir.slice(2), [{ text: ad(0), callback_data: 'kbs:' + durumId + ':0' }]];
+}
+const pcAdi = (c) => (c && c.veri && c.veri.pc) || (c && c.hwid ? c.hwid.slice(0, 8) : '?');
+
 // Secilen PC'ye komut birakir (ayni turden teslim edilmemis eskiyi siler).
 async function komutBirak(lisId, durumId, tur, veri) {
   const { rows } = await sql`
@@ -369,6 +381,55 @@ export async function POST(req) {
         await gonder(q.from.id,
           AYAR.kisa + ' · 💻 <b>' + kac((c.veri && c.veri.pc) || c.hwid.slice(0, 8)) + '</b>\n\n' +
           AYAR.uzun + ' Bot en geç ~30 sn içinde uygular.');
+        return OK();
+      }
+
+      // (13 Eki 2026) /karakterdebekle: PC secildi -> sure sec.
+      if (q.data && q.data.startsWith('kbk:')) {
+        const lis = await lisansliMi(q.from && q.from.id);
+        if (!lis) { await cevapla(q.id, 'Lisans gerekli'); return OK(); }
+        const durumId = q.data.slice(4);
+        const { rows } = await sql`
+          SELECT hwid, veri FROM durumlar WHERE id = ${durumId} AND lisans_id = ${lis.id}`;
+        if (!rows[0]) { await cevapla(q.id, 'Bilgisayar bulunamadı'); return OK(); }
+        await cevapla(q.id, 'Süreyi seç');
+        await gonder(q.from.id,
+          '⏸ <b>Karakter ekranında bekle</b> · 💻 <b>' + kac(pcAdi(rows[0])) + '</b>\n\nNe kadar beklesin?',
+          { inline_keyboard: karakterBekleSureKlavye(durumId) });
+        return OK();
+      }
+      // (13 Eki 2026) /karakterdebekle: sure secildi -> komut birak.
+      if (q.data && q.data.startsWith('kbs:')) {
+        const lis = await lisansliMi(q.from && q.from.id);
+        if (!lis) { await cevapla(q.id, 'Lisans gerekli'); return OK(); }
+        const parca = q.data.slice(4).split(':');
+        const durumId = parca[0];
+        const dk = Math.max(0, Math.min(480, parseInt(parca[1], 10) || 0));
+        const c = await komutBirak(lis.id, durumId, 'karakterbekle', { dk });
+        if (!c) { await cevapla(q.id, 'Bilgisayar bulunamadı'); return OK(); }
+        // Teslim edilmemis eski bir "devam" varsa yeni bekleme hemen bitmesin.
+        await sql`
+          DELETE FROM komutlar WHERE lisans_id = ${lis.id} AND hwid = ${c.hwid}
+             AND tur = 'karakterdevam' AND teslim IS NULL`;
+        await cevapla(q.id, '⏸ Gönderildi');
+        await gonder(q.from.id,
+          '⏸ 💻 <b>' + kac(pcAdi(c)) + '</b> karakter ekranında bekleyecek: <b>' +
+          (dk ? dk + ' dk' : 'sen "devam" diyene kadar') + '</b>\n\n' +
+          'Bot en geç ~30 sn içinde güvenli bir anda karakter ekranına geçer; süre bitince ' +
+          '(ya da devam deyince) <b>aynı karaktere</b> geri girer. Bu sürede karakter değişimi ve ' +
+          'mola süreleri durur. (Bot sürümü 2.8.6+ gerekir.)',
+          { inline_keyboard: [[{ text: '▶️ Devam ettir (oyuna dön)', callback_data: 'kbd:' + durumId }]] });
+        return OK();
+      }
+      // (13 Eki 2026) Karakter ekranindan erken don.
+      if (q.data && q.data.startsWith('kbd:')) {
+        const lis = await lisansliMi(q.from && q.from.id);
+        if (!lis) { await cevapla(q.id, 'Lisans gerekli'); return OK(); }
+        const c = await komutBirak(lis.id, q.data.slice(4), 'karakterdevam', {});
+        if (!c) { await cevapla(q.id, 'Bilgisayar bulunamadı'); return OK(); }
+        await cevapla(q.id, '▶️ Devam ediliyor');
+        await gonder(q.from.id,
+          '▶️ 💻 <b>' + kac(pcAdi(c)) + '</b> karakter ekranından oyuna dönecek. Bot en geç ~30 sn içinde uygular.');
         return OK();
       }
 
@@ -588,7 +649,8 @@ export async function POST(req) {
     // (grupta calissin diye) - genel "sohbete bagli lisans" kapisindan muaf.
     const kisiselKomut = komut === '/gm' || komut === '/ekranresmi' || komut === '/ekran'
       || komut === '/pckapat' || komut === '/oyunukapat'
-      || komut === '/oyunac' || komut === '/botbaslat' || komut === '/botdurdur' || komut === '/kod';
+      || komut === '/oyunac' || komut === '/botbaslat' || komut === '/botdurdur' || komut === '/kod'
+      || komut === '/karakterdebekle' || komut === '/karakterdendevam';
     const bag = kisiselKomut ? null : await bagliLisans(chatId);
     if (!bag && !kisiselKomut) {
       await gonder(chatId, 'Önce lisansını bağla:\n<code>/baglan K34-XXXXX-XXXXX-XXXXX</code>');
@@ -855,6 +917,34 @@ export async function POST(req) {
         return OK();
       }
       await gonder(chatId, AYAR.bas + '\n\n' + AYAR.not + '\nHangi bilgisayar?', { inline_keyboard: kb });
+      return OK();
+    }
+
+    // (13 Eki 2026 - KULLANICI ISTEGI) Hesabi karakter ekraninda beklet / devam ettir.
+    // PC'ye ozel, sadece ozelden. Bot tarafi: pega_bulut.komut_isle 'karakterbekle'/'karakterdevam'.
+    if (komut === '/karakterdebekle' || komut === '/karakterdendevam') {
+      if (m.chat.type === 'group' || m.chat.type === 'supergroup') {
+        await cagir('sendMessage', {
+          chat_id: chatId,
+          text: 'Bu komut güvenlik için sadece <b>özelden</b> çalışır: <code>' + komut + '</code>',
+          parse_mode: 'HTML', reply_to_message_id: m.message_id,
+        });
+        return OK();
+      }
+      const lis = await lisansliMi(m.from && m.from.id);
+      if (!lis) { await gonder(chatId, SATIN_AL); return OK(); }
+      const devam = komut === '/karakterdendevam';
+      const kb = await pcSecKlavye(lis.id, devam ? 'kbd:' : 'kbk:', devam ? '▶️' : '⏸');
+      const bas = devam ? '▶️ <b>Karakter ekranından devam</b>' : '⏸ <b>Karakter Ekranında Bekle</b>';
+      if (!kb.length) {
+        await gonder(chatId, bas + '\n\nKayıtlı bilgisayar yok. Önce botu bir PC\'de aç.');
+        return OK();
+      }
+      const not = devam
+        ? 'Seçtiğin PC karakter ekranından oyuna (aynı karaktere) döner.'
+        : 'Seçtiğin PC\'nin hesabı karakter seçim ekranında bekletilir (güvenlik). Süre bitince ya da ' +
+          'devam deyince aynı karaktere geri girer; bu sürede karakter değişimi ve mola süreleri durur.';
+      await gonder(chatId, bas + '\n\n' + not + '\nHangi bilgisayar?', { inline_keyboard: kb });
       return OK();
     }
 
